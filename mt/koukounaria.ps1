@@ -14,6 +14,12 @@ $DoUpdate       = $true
 # =============================
 
 # ---------- helpers ----------
+# Legacy SSH algorithms for old RouterOS (v6.x)
+$KexLegacy     = @('diffie-hellman-group1-sha1','diffie-hellman-group14-sha1')
+$MacLegacy     = @('hmac-sha1','hmac-md5')
+$CipherLegacy  = @('aes128-cbc','aes192-cbc','aes256-cbc','3des-cbc','aes128-ctr','aes256-ctr')
+$HostKeyLegacy = @('ssh-rsa','ssh-dss')
+
 function Ping-Fast($ip){ & ping.exe -n 1 -w 700 $ip 1>$null 2>$null; return ($LASTEXITCODE -eq 0) }
 function Port22-Open($ip){ try { Test-NetConnection -ComputerName $ip -Port 22 -InformationLevel Quiet } catch { $false } }
 function New-Cred($user,$pass){ New-Object PSCredential ($user,(ConvertTo-SecureString $pass -AsPlainText -Force)) }
@@ -23,13 +29,13 @@ function Connect-MT {
   # try no password first
   try {
     $credNone = New-Cred $user ""
-    $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -ErrorAction Stop
+    $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='nopass' }
   } catch {}
   # then the provided password
   try {
     $credPwd = New-Cred $user $pass
-    $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -ErrorAction Stop
+    $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='password' }
   } catch { return $null }
 }
@@ -41,7 +47,7 @@ function Wait-ForHost { param([string]$ip,[int]$timeoutSec=300)
 }
 
 function Reconnect-SSH { param([string]$ip,[string]$user,[string]$pass)
-  try { New-SSHSession -ComputerName $ip -Credential (New-Cred $user $pass) -AcceptKey -ErrorAction Stop } catch { $null }
+  try { New-SSHSession -ComputerName $ip -Credential (New-Cred $user $pass) -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop } catch { $null }
 }
 
 # ---- RouterOS one-liners ----
