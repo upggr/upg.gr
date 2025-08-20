@@ -2,16 +2,16 @@
 Import-Module Posh-SSH -ErrorAction Stop
 
 $BaseNet   = "192.168.208."
-$StartIP   = 2
-$EndIP     = 253
+$StartIP   = 101     # start from your test CAP
+$EndIP     = 101     # only test this one for now
 $Username  = "admin"
 $Password  = "is3rupgr.1821##"
-$FetchUrl  = "https://upg.gr/koukounaria.rsc"
+$FetchUrl  = "https://upg.gr/mt/koukounaria.rsc"
 $DstFile   = "koukounaria.rsc"
 $SSID      = "Koukounaria Guest 9"
 $LogFile   = ".\deploy-log.csv"
 
-# RouterOS checks/commands (v6+)
+# RouterOS checks/commands
 $CheckSSID = ":if ([:len [/interface wireless find where ssid=`"$SSID`"]] > 0) do={:put PRESENT} else={:put ABSENT}"
 $Provision = @"
 /tool fetch url=$FetchUrl dst=$DstFile check-certificate=no;
@@ -19,7 +19,6 @@ $Provision = @"
 /system reboot without-prompt=yes;
 "@
 
-# start log
 "IP,Reachable,P22Open,AuthMode,Action,Note" | Out-File -Encoding ascii $LogFile
 
 function Ping-Fast($ip) {
