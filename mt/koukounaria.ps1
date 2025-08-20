@@ -28,8 +28,8 @@ $CmdChkSSID    = ":if ([:len [/interface wireless find where ssid=`"$SSID`"]] > 
 # INLINE PROVISION (no .rsc) — disable CAP, reset radios, open SSID on both bands, VLAN 10 tagging, DHCP on ether1, bridge/VLAN config, reboot
 $CmdProvision = @"
 :put "=== starting inline provision ===";
-/interface wireless cap set enabled=no;
-
+# DECAP: fully remove CAP settings and disable CAPsMAN pkg if present
+/interface wireless cap set enabled=no interfaces="" discovery-interfaces="" caps-man-addresses="" certificate="" static-virtual=no; :if ([:len [/system package find where name="caps-man"]]>0) do={/system package disable caps-man}; :do { /caps-man manager set enabled=no } on-error={}; /delay 1;
 /interface wireless
 :if ([:len [find where name="wlan1"]]>0) do={reset-configuration wlan1};
 /delay 1;
@@ -101,12 +101,12 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
   $sumRow = [PSCustomObject]@{ IP=$ip; Identity=""; MAC=""; Version=""; SSID_wlan1=""; SSID_wlan2="" }
 
   if (-not (Port22-Open $ip)) {
-    $Summary.Add($sumRow); "$ip,,,,,`'true`',`'false`',,,-,ssh closed" | Add-Content $LogFile; continue
+    "$ip,,,,,`'true`',`'false`',,,-,ssh closed" | Add-Content $LogFile; continue
   }
 
   $conn = Try-SSH $ip $Username $Password
   if (-not $conn) {
-    $Summary.Add($sumRow); "$ip,,,,,`'true`',`'true`',,,-,ssh auth failed" | Add-Content $LogFile; continue
+    "$ip,,,,,`'true`',`'true`',,,-,ssh auth failed" | Add-Content $LogFile; continue
   }
 
   $session = $conn.Session
@@ -168,7 +168,6 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
 
     "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
   } catch {
-    $Summary.Add($sumRow)
     "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction,$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
   } finally {
     if ($session) { Remove-SSHSession -SSHSession $session | Out-Null }
