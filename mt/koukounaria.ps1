@@ -4,21 +4,28 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # -------- CONFIG --------
 $BaseNet   = "192.168.208."
-$StartIP   = 2            # set 101/101 to test a single device first
+$StartIP   = 2
 $EndIP     = 253
 $Username  = "admin"
 $Password  = "is3rupgr.1821##"
 $FetchUrl  = "https://upg.gr/mt/koukounaria.rsc"
 $DstFile   = "koukounaria.rsc"
 $SSID      = "Koukounaria Guest 9"
-$DoUpdate  = $true
+$DoUpdate  = $true         # set $false to disable auto-update
 # ------------------------
 
 # RouterOS command snippets
 $CmdGetID      = ':put [/system identity get name]'
-$CmdGetMAC     = ':local m ""; :foreach i in=[/interface ethernet find where disabled=no] do={:set m [/interface ethernet get $i mac-address]; :break}; :put $m'
+# SAFE MAC (no :break). Take first enabled ethernet, or blank.
+/*
+  Explanation:
+  - $e is the list of ethernet interfaces (enabled).
+  - ([ ... ]->0) = first element of an array.
+*/
+$CmdGetMAC     = ':local e [/interface ethernet find where disabled=no]; :if ([:len $e]>0) do={:put ( [/interface ethernet get $e mac-address]->0 )} else={:put ""}'
 $CmdGetVer     = ':put [/system resource get version]'
-$CmdHasWlan    = ':if ([:len [/interface wireless find]]>0) do={:put WL} else={:put NOWL}'
+# SAFE wireless presence (works even if wireless package is missing)
+$CmdHasWlan    = ':if ([:len [/interface find where type~"wlan"]]>0) do={:put WL} else={:put NOWL}'
 $CmdChkSSID    = ":if ([:len [/interface wireless find where ssid=`"$SSID`"]] > 0) do={:put PRESENT} else={:put ABSENT}"
 $CmdProvision  = @"
 /tool fetch url=$FetchUrl dst=$DstFile check-certificate=no;
@@ -29,13 +36,8 @@ $CmdCheckUpd   = '/system package update check-for-updates'
 $CmdGetInstVer = ':put [/system package update get installed-version]'
 $CmdGetLatest  = ':put [/system package update get latest-version]'
 
-function Ping-Fast($ip) {
-  & ping.exe -n 1 -w 600 $ip 1>$null 2>$null
-  return ($LASTEXITCODE -eq 0)
-}
-function Port22-Open($ip) {
-  try { Test-NetConnection -ComputerName $ip -Port 22 -InformationLevel Quiet } catch { $false }
-}
+function Ping-Fast($ip) { & ping.exe -n 1 -w 600 $ip 1>$null 2>$null; return ($LASTEXITCODE -eq 0) }
+function Port22-Open($ip) { try { Test-NetConnection -ComputerName $ip -Port 22 -InformationLevel Quiet } catch { $false } }
 function Try-SSH($ip, $user, $pass) {
   try {
     $credNone = New-Object PSCredential ($user,(ConvertTo-SecureString "" -AsPlainText -Force))
@@ -49,7 +51,7 @@ function Try-SSH($ip, $user, $pass) {
   } catch { return $null }
 }
 
-# Logs
+# Files
 $LogFile = ".\deploy-log.csv"
 if (-not (Test-Path $LogFile)) {
   "IP,Identity,MAC,Version,Reachable,P22Open,AuthMode,SSIDAction,UpdateAction,Note" | Out-File -Encoding ascii $LogFile
@@ -61,13 +63,9 @@ $Summary = New-Object System.Collections.Generic.List[object]
 for ($i=$StartIP; $i -le $EndIP; $i++) {
   $ip = "$BaseNet$i"
   Write-Host "[$ip] Ping check..."
-  if (-not (Ping-Fast $ip)) {
-    # not detected -> no summary row
-    "$ip,,,,'false','false',,,-,no ping" | Add-Content $LogFile
-    continue
-  }
+  if (-not (Ping-Fast $ip)) { "$ip,,,,'false','false',,,-,no ping" | Add-Content $LogFile; continue }
 
-  # detected -> create summary row now with just IP; fill details if SSH works
+  # add summary row now (detected host); fill details if we get them
   $sumRow = [PSCustomObject]@{ IP=$ip; Identity=""; MAC=""; Version="" }
 
   $p22 = Port22-Open $ip
@@ -85,23 +83,27 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
   }
 
   $session  = $conn.Session
-  $identity = ""; $mac=""; $ver=""; $ssidAction="n/a"; $updAction="n/a"; $note=""
+  $identity=""; $mac=""; $ver=""; $ssidAction="n/a"; $updAction="n/a"
   try {
+    # identity/version
     $identity = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetID  -TimeOut 4000).Output -join "`n").Trim()
-    $mac      = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetMAC -TimeOut 4000).Output -join "`n").Trim()
     $ver      = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetVer -TimeOut 4000).Output -join "`n").Trim()
 
-    # fill summary details now that we have them
+    # MAC (sanitize with regex in case device prints extra lines)
+    $macRaw = (Invoke-SSHCommand -SSHSession $session -Command $CmdGetMAC -TimeOut 4000).Output -join "`n"
+    $mac    = ([regex]::Match($macRaw,'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')).Value
+
+    # fill summary row
     $sumRow.Identity = $identity
     $sumRow.MAC      = $mac
     $sumRow.Version  = $ver
     $Summary.Add($sumRow)
 
-    # skip provisioning on devices without wireless
+    # skip provisioning on non-wireless boxes
     $wl = ((Invoke-SSHCommand -SSHSession $session -Command $CmdHasWlan -TimeOut 3000).Output -join "`n").Trim()
     if ($wl -eq 'NOWL') {
       $ssidAction = "no-wireless"
-      "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction,$note" | Add-Content $LogFile
+      "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
       continue
     }
 
@@ -134,17 +136,16 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
       }
     }
 
-    "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction,$note" | Add-Content $LogFile
+    "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
   } catch {
-    $Summary.Add($sumRow)
+    # keep summary row (already added), log error
     "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction,$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
   } finally {
     if ($session) { Remove-SSHSession -SSHSession $session | Out-Null }
   }
 }
 
-# Write the per-run summary CSV of all detected (ping-alive) devices
+# Write per-run summary of ALL detected hosts
 $Summary | Export-Csv -Path $SummaryFile -NoTypeInformation -Encoding UTF8
-
 Write-Host "Summary: $SummaryFile"
 Write-Host "Log:     $LogFile"
