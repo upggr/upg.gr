@@ -1,17 +1,19 @@
-# Requires: Install-Module Posh-SSH -Force
+# koukounaria.ps1
 Import-Module Posh-SSH -ErrorAction Stop
 
+# ---------- CONFIG ----------
 $BaseNet   = "192.168.208."
-$StartIP   = 101     # start from your test CAP
-$EndIP     = 101     # only test this one for now
+$StartIP   = 2
+$EndIP     = 253
 $Username  = "admin"
 $Password  = "is3rupgr.1821##"
 $FetchUrl  = "https://upg.gr/mt/koukounaria.rsc"
 $DstFile   = "koukounaria.rsc"
 $SSID      = "Koukounaria Guest 9"
 $LogFile   = ".\deploy-log.csv"
+# ----------------------------
 
-# RouterOS checks/commands
+# RouterOS snippets
 $CheckSSID = ":if ([:len [/interface wireless find where ssid=`"$SSID`"]] > 0) do={:put PRESENT} else={:put ABSENT}"
 $Provision = @"
 /tool fetch url=$FetchUrl dst=$DstFile check-certificate=no;
@@ -19,67 +21,53 @@ $Provision = @"
 /system reboot without-prompt=yes;
 "@
 
-"IP,Reachable,P22Open,AuthMode,Action,Note" | Out-File -Encoding ascii $LogFile
-
+# Helpers
 function Ping-Fast($ip) {
-  $p = & ping.exe -n 1 -w 600 $ip 2>$null
+  & ping.exe -n 1 -w 600 $ip 1>$null 2>$null
   return ($LASTEXITCODE -eq 0)
 }
-
 function Port22-Open($ip) {
   try { return (Test-NetConnection -ComputerName $ip -Port 22 -InformationLevel Quiet) } catch { return $false }
 }
-
 function Try-SSH($ip, $user, $pass) {
-  # try NO password
+  # try NO password first
   try {
     $credNone = New-Object System.Management.Automation.PSCredential ($user,(ConvertTo-SecureString "" -AsPlainText -Force))
     $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -ErrorAction Stop
-    return @{Session=$s; Mode="nopass"}
+    return @{ Session=$s; Mode="nopass" }
   } catch {}
-
-  # try WITH password
+  # then WITH password
   try {
     $credPwd = New-Object System.Management.Automation.PSCredential ($user,(ConvertTo-SecureString $pass -AsPlainText -Force))
     $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -ErrorAction Stop
-    return @{Session=$s; Mode="password"}
+    return @{ Session=$s; Mode="password" }
   } catch { return $null }
 }
+
+"IP,Reachable,P22Open,AuthMode,Action,Note" | Out-File -Encoding ascii $LogFile
 
 for ($i=$StartIP; $i -le $EndIP; $i++) {
   $ip = "$BaseNet$i"
   Write-Host "[$ip] Ping check..." -ForegroundColor Cyan
-  $alive = Ping-Fast $ip
-  if (-not $alive) { "$ip,false,false,,-,no ping" | Add-Content $LogFile; continue }
-
-  $p22 = Port22-Open $ip
-  if (-not $p22) {
-    Write-Host "[$ip] TCP/22 closed (SSH disabled?)" -ForegroundColor DarkYellow
-    "$ip,true,false,,-,ssh closed" | Add-Content $LogFile
-    continue
-  }
+  if (-not (Ping-Fast $ip)) { "$ip,false,false,,-,no ping"    | Add-Content $LogFile; continue }
+  if (-not (Port22-Open $ip)) { "$ip,true,false,,-,ssh closed" | Add-Content $LogFile; continue }
 
   $conn = Try-SSH $ip $Username $Password
-  if (-not $conn) {
-    Write-Host "[$ip] SSH auth failed." -ForegroundColor Red
-    "$ip,true,true,,-,ssh auth failed" | Add-Content $LogFile
-    continue
-  }
+  if (-not $conn) { "$ip,true,true,,-,ssh auth failed" | Add-Content $LogFile; continue }
 
   $session = $conn.Session
   try {
     Write-Host "[$ip] Connected via $($conn.Mode). Checking SSID..."
-    $out = (Invoke-SSHCommand -SSHSession $session -Command $CheckSSID -TimeOut 3000).Output | Out-String
-    if ($out -match "PRESENT") {
-      Write-Host "[$ip] SSID already present. Skipping." -ForegroundColor Yellow
+    $out = (Invoke-SSHCommand -SSHSession $session -Command $CheckSSID -TimeOut 4000).Output -join "`n"
+    if ($out -match 'PRESENT') {
       "$ip,true,true,$($conn.Mode),skipped,ssid present" | Add-Content $LogFile
-    } else {
-      Write-Host "[$ip] Provisioning..." -ForegroundColor Green
-      Invoke-SSHCommand -SSHSession $session -Command $Provision | Out-Null
-      "$ip,true,true,$($conn.Mode),provisioned,rebooting" | Add-Content $LogFile
+      continue
     }
+    Write-Host "[$ip] Provisioning..." -ForegroundColor Green
+    Invoke-SSHCommand -SSHSession $session -Command $Provision | Out-Null
+    "$ip,true,true,$($conn.Mode),provisioned,rebooting" | Add-Content $LogFile
   } catch {
-    "$ip,true,true,$($conn.Mode),error,$($_.Exception.Message.Replace(',', ';'))" | Add-Content $LogFile
+    "$ip,true,true,$($conn.Mode),error,$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
   } finally {
     if ($session) { Remove-SSHSession -SSHSession $session | Out-Null }
   }
