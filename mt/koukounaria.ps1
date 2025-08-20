@@ -34,6 +34,7 @@ $CmdProvision = @"
 :if ([:len [find where name="wlan1"]]>0) do={reset-configuration wlan1};
 /delay 1;
 :if ([:len [find where name="wlan2"]]>0) do={reset-configuration wlan2};
+/interface wireless set [find] scan-list=default country=no_country_set channel-width=20mhz;
 
 /interface wireless security-profiles
 :if ([:len [find where name="guest_open"]]=0) do={add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers="""};
@@ -174,20 +175,34 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
         $re = Reconnect-SSH $ip $Username $Password
         if ($re -ne $null) {
           $session = $re
-          # re-read SSIDs and enforce if needed
-          $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
-          $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 4000).Output -join "`n").Trim()
-          if (($ssid1 -ne $SSID -and $ssid1 -ne "") -or ($ssid2 -ne $SSID -and $ssid2 -ne "")) {
-            $cmdEnforce = @"
+          # verify & enforce until SSID is correct and radios enabled (max 60s)
+          $deadline = [DateTime]::UtcNow.AddSeconds(60)
+          do {
+              $s1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan1 ssid]' -TimeOut 3000).Output -join "`n").Trim()
+              $s2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan2 ssid]' -TimeOut 3000).Output -join "`n").Trim()
+              $d1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan1 disabled]' -TimeOut 3000).Output -join "`n").Trim()
+              $d2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan2 disabled]' -TimeOut 3000).Output -join "`n").Trim()
+
+              $ok1 = (($s1 -eq $SSID -and $d1 -eq "false") -or ($s1 -eq "" -and $d1 -eq "true"))
+              $ok2 = (($s2 -eq $SSID -and $d2 -eq "false") -or ($s2 -eq "" -and $d2 -eq "true"))
+
+              if (-not ($ok1 -and $ok2)) {
+                  $cmdEnforce = @"
 /interface wireless set [find where name="wlan1"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
 /interface wireless set [find where name="wlan2"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
 /interface wireless enable [find where name="wlan1"];
 /interface wireless enable [find where name="wlan2"];
 "@
-            Invoke-SSHCommand -SSHSession $session -Command $cmdEnforce | Out-Null
-            $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
-            $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 4000).Output -join "`n").Trim()
-          }
+                  Invoke-SSHCommand -SSHSession $session -Command $cmdEnforce | Out-Null
+                  Start-Sleep -Seconds 3
+              } else {
+                  break
+              }
+          } while ([DateTime]::UtcNow -lt $deadline)
+
+          # read final values into report
+          $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan1 ssid]' -TimeOut 3000).Output -join "`n").Trim()
+          $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan2 ssid]' -TimeOut 3000).Output -join "`n").Trim()
           $ssidAction = "provisioned+verified"
         } else {
           $ssidAction = "provisioned+reconnect-failed"
