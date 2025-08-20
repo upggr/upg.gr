@@ -176,7 +176,10 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
           $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
           $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 4000).Output -join "`n").Trim()
           if (($ssid1 -ne $SSID -and $ssid1 -ne "") -or ($ssid2 -ne $SSID -and $ssid2 -ne "")) {
-            $cmdEnforce = "/interface wireless set [find where name=\"wlan1\"] mode=ap-bridge ssid=\"$SSID\" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no; /interface wireless set [find where name=\"wlan2\"] mode=ap-bridge ssid=\"$SSID\" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;"
+            $cmdEnforce = @"
+/interface wireless set [find where name="wlan1"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
+/interface wireless set [find where name="wlan2"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
+"@
             Invoke-SSHCommand -SSHSession $session -Command $cmdEnforce | Out-Null
             $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
             $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 4000).Output -join "`n").Trim()
