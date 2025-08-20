@@ -83,6 +83,23 @@ function Try-SSH($ip, $user, $pass) {
         return @{ Session=$s2; Mode="password" } } catch { return $null }
 }
 
+function Wait-ForHost {
+  param([string]$ip,[int]$timeoutSec=240)
+  $sw=[Diagnostics.Stopwatch]::StartNew()
+  while($sw.Elapsed.TotalSeconds -lt $timeoutSec){
+    & ping.exe -n 1 -w 800 $ip 1>$null 2>$null
+    if($LASTEXITCODE -eq 0){ return $true }
+    Start-Sleep -Seconds 2
+  }
+  return $false
+}
+
+function Reconnect-SSH {
+  param([string]$ip,[string]$user,[string]$pass)
+  $cred = New-Object PSCredential ($user,(ConvertTo-SecureString $pass -AsPlainText -Force))
+  try { return (New-SSHSession -ComputerName $ip -Credential $cred -AcceptKey -ErrorAction Stop) } catch { return $null }
+}
+
 # ---- files ----
 $LogFile = ".\deploy-log.csv"
 if (-not (Test-Path $LogFile)) {
@@ -129,7 +146,8 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
     $ssid2    = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 2500).Output -join "`n").Trim()
 
     $sumRow.Identity   = $identity; $sumRow.MAC=$mac; $sumRow.Version=$ver; $sumRow.SSID_wlan1=$ssid1; $sumRow.SSID_wlan2=$ssid2
-    $Summary.Add($sumRow)
+
+    $didProvision = $false
 
     # Skip provisioning on boxes with no wireless
     $wl = ((Invoke-SSHCommand -SSHSession $session -Command $CmdHasWlan -TimeOut 2500).Output -join "`n").Trim()
@@ -145,7 +163,31 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
       $ssidAction = "skipped"
     } else {
       $ssidAction = "provisioned"
+      $didProvision = $true
       Invoke-SSHCommand -SSHSession $session -Command $CmdProvision | Out-Null
+      # device will reboot; drop the current session
+      try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
+      # wait for it to come back and reconnect
+      if (Wait-ForHost $ip 240) {
+        $re = Reconnect-SSH $ip $Username $Password
+        if ($re -ne $null) {
+          $session = $re
+          # re-read SSIDs and enforce if needed
+          $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
+          $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 4000).Output -join "`n").Trim()
+          if (($ssid1 -ne $SSID -and $ssid1 -ne "") -or ($ssid2 -ne $SSID -and $ssid2 -ne "")) {
+            $cmdEnforce = "/interface wireless set [find where name=\"wlan1\"] mode=ap-bridge ssid=\"$SSID\" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no; /interface wireless set [find where name=\"wlan2\"] mode=ap-bridge ssid=\"$SSID\" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;"
+            Invoke-SSHCommand -SSHSession $session -Command $cmdEnforce | Out-Null
+            $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
+            $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 4000).Output -join "`n").Trim()
+          }
+          $ssidAction = "provisioned+verified"
+        } else {
+          $ssidAction = "provisioned+reconnect-failed"
+        }
+      } else {
+        $ssidAction = "provisioned+timeout"
+      }
     }
 
     # Optional update to long-term
@@ -166,6 +208,7 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
       } else { $updAction = "up-to-date ($installed)" }
     }
 
+    $Summary.Add($sumRow)
     "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
   } catch {
     "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction,$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
