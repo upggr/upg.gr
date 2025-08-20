@@ -1,245 +1,236 @@
-# koukounaria.ps1  —  scan/provision MikroTik CAPs (inline, no .rsc)
+# koukounaria.ps1 — scan & FORCE-config MikroTik APs (no .rsc)
 Import-Module Posh-SSH -ErrorAction Stop
 
-# -------- CONFIG --------
-$BaseNet   = "192.168.208."
-$StartIP   = 100
-$EndIP     = 165
-$Username  = "admin"
-$Password  = "is3rupgr.1821##"
-$SSID      = "Koukounaria Guest 9"
-$VlanId    = 10
-$DoUpdate  = $true           # set $false to skip RouterOS update
-# ------------------------
+# ======== USER CONFIG ========
+$BaseNet        = "192.168.208."
+$StartIP        = 100          # inclusive
+$EndIP          = 165         # inclusive
+$Username       = "admin"
+$Password       = "is3rupgr.1821##"   # will be set if device has no password
+$SSID           = "Koukounaria Guest 9"
+$VlanId         = 10
+$UpdateChannel  = "long-term"  # change to "stable" if you want the stable channel
+$DoUpdate       = $true
+# =============================
 
-# RouterOS one-liners (safe on v6)
-$CmdGetID      = ':put [/system identity get name]'
-$CmdGetVer     = ':put [/system resource get version]'
-# ether1 MAC if exists, else first enabled ethernet MAC
-$CmdGetMacE1   = ':local i [/interface ethernet find where name="ether1"]; :if ([:len $i]>0) do={:put [/interface ethernet get $i mac-address]} else={:local e [/interface ethernet find where disabled=no]; :if ([:len $e]>0) do={:put ( [/interface ethernet get $e mac-address]->0 )} else={:put ""}}'
-# SSIDs per radio (blank if radio missing)
-$CmdGetSSID1   = ':if ([:len [/interface wireless find where name="wlan1"]]>0) do={:put [/interface wireless get wlan1 ssid]} else={:put ""}'
-$CmdGetSSID2   = ':if ([:len [/interface wireless find where name="wlan2"]]>0) do={:put [/interface wireless get wlan2 ssid]} else={:put ""}'
-# presence of any wireless interface
-$CmdHasWlan    = ':if ([:len [/interface find where type~"wlan"]]>0) do={:put WL} else={:put NOWL}'
-# check if our SSID exists (idempotent)
-$CmdChkSSID    = ":if ([:len [/interface wireless find where ssid=`"$SSID`"]] > 0) do={:put PRESENT} else={:put ABSENT}"
+# ---------- helpers ----------
+function Ping-Fast($ip){ & ping.exe -n 1 -w 700 $ip 1>$null 2>$null; return ($LASTEXITCODE -eq 0) }
+function Port22-Open($ip){ try { Test-NetConnection -ComputerName $ip -Port 22 -InformationLevel Quiet } catch { $false } }
+function New-Cred($user,$pass){ New-Object PSCredential ($user,(ConvertTo-SecureString $pass -AsPlainText -Force)) }
 
-# INLINE PROVISION (no .rsc) — disable CAP, reset radios, open SSID on both bands, VLAN 10 tagging, DHCP on ether1, bridge/VLAN config, reboot
-$CmdProvision = @"
-:put "=== starting inline provision ===";
-# DECAP: fully remove CAP settings and disable CAPsMAN pkg if present
-/interface wireless cap set enabled=no interfaces="" discovery-interfaces="" caps-man-addresses="" certificate="" static-virtual=no; :if ([:len [/system package find where name="caps-man"]]>0) do={/system package disable caps-man}; :do { /caps-man manager set enabled=no } on-error={}; /delay 1;
-/interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={reset-configuration wlan1};
-/delay 1;
-:if ([:len [find where name="wlan2"]]>0) do={reset-configuration wlan2};
-/interface wireless set [find] scan-list=default country=no_country_set channel-width=20mhz;
-
-/interface wireless security-profiles
-:if ([:len [find where name="guest_open"]]=0) do={add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers="""};
-
-/interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no};
-:if ([:len [find where name="wlan2"]]>0) do={set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no};
-/interface wireless enable [find where name="wlan1"];
-/interface wireless enable [find where name="wlan2"];
-
-/ip dhcp-client
-:if ([:len [find where interface="ether1"]]=0) do={add interface=ether1 disabled=no} else={set [find where interface="ether1"] disabled=no};
-
-:local brId [/interface bridge find];
-:local brName "";
-:if ([:len $brId]>0) do={:set brName [/interface bridge get ($brId->0) name]} else={/interface bridge add name=bridge1; :set brName "bridge1"};
-
-/interface bridge port
-:if ([:len [/interface wireless find where name="wlan1"]]>0 && [:len [find where bridge=$brName interface="wlan1"]]=0) do={add bridge=$brName interface=wlan1};
-:if ([:len [/interface wireless find where name="wlan2"]]>0 && [:len [find where bridge=$brName interface="wlan2"]]=0) do={add bridge=$brName interface=wlan2};
-
-:local tagged "$brName,ether1";
-:if ([:len [/interface wireless find where name="wlan1"]]>0) do={:set tagged "$tagged,wlan1"};
-:if ([:len [/interface wireless find where name="wlan2"]]>0) do={:set tagged "$tagged,wlan2"};
-
-/interface bridge vlan
-:if ([:len [find where bridge=$brName vlan-ids=$VlanId]] = 0) do={add bridge=$brName vlan-ids=$VlanId tagged=$tagged} else={set [find where bridge=$brName vlan-ids=$VlanId] tagged=$tagged};
-/interface bridge set [find where name=$brName] vlan-filtering=yes;
-
-:put "=== inline provision complete; rebooting ===";
-/system reboot without-prompt=yes;
-"@
-
-# Update helpers
-$CmdSetLT       = '/system package update set channel=long-term'
-$CmdCheckUpd    = '/system package update check-for-updates'
-$CmdGetInstVer  = ':put [/system package update get installed-version]'
-$CmdGetLatest   = ':put [/system package update get latest-version]'
-
-# ---- helpers ----
-function Ping-Fast($ip) { & ping.exe -n 1 -w 600 $ip 1>$null 2>$null; return ($LASTEXITCODE -eq 0) }
-function Port22-Open($ip) { try { Test-NetConnection -ComputerName $ip -Port 22 -InformationLevel Quiet } catch { $false } }
-function Try-SSH($ip, $user, $pass) {
-  try { $c1 = New-Object PSCredential ($user,(ConvertTo-SecureString "" -AsPlainText -Force))
-        $s1 = New-SSHSession -ComputerName $ip -Credential $c1 -AcceptKey -ErrorAction Stop
-        return @{ Session=$s1; Mode="nopass" } } catch {}
-  try { $c2 = New-Object PSCredential ($user,(ConvertTo-SecureString $pass -AsPlainText -Force))
-        $s2 = New-SSHSession -ComputerName $ip -Credential $c2 -AcceptKey -ErrorAction Stop
-        return @{ Session=$s2; Mode="password" } } catch { return $null }
+function Connect-MT {
+  param([string]$ip,[string]$user,[string]$pass)
+  # try no password first
+  try {
+    $credNone = New-Cred $user ""
+    $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -ErrorAction Stop
+    return @{ Session=$s; Mode='nopass' }
+  } catch {}
+  # then the provided password
+  try {
+    $credPwd = New-Cred $user $pass
+    $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -ErrorAction Stop
+    return @{ Session=$s; Mode='password' }
+  } catch { return $null }
 }
 
-function Wait-ForHost {
-  param([string]$ip,[int]$timeoutSec=240)
+function Wait-ForHost { param([string]$ip,[int]$timeoutSec=300)
   $sw=[Diagnostics.Stopwatch]::StartNew()
-  while($sw.Elapsed.TotalSeconds -lt $timeoutSec){
-    & ping.exe -n 1 -w 800 $ip 1>$null 2>$null
-    if($LASTEXITCODE -eq 0){ return $true }
-    Start-Sleep -Seconds 2
-  }
+  while($sw.Elapsed.TotalSeconds -lt $timeoutSec){ & ping.exe -n 1 -w 900 $ip 1>$null 2>$null; if($LASTEXITCODE -eq 0){ return $true } Start-Sleep -Seconds 2 }
   return $false
 }
 
-function Reconnect-SSH {
-  param([string]$ip,[string]$user,[string]$pass)
-  $cred = New-Object PSCredential ($user,(ConvertTo-SecureString $pass -AsPlainText -Force))
-  try { return (New-SSHSession -ComputerName $ip -Credential $cred -AcceptKey -ErrorAction Stop) } catch { return $null }
+function Reconnect-SSH { param([string]$ip,[string]$user,[string]$pass)
+  try { New-SSHSession -ComputerName $ip -Credential (New-Cred $user $pass) -AcceptKey -ErrorAction Stop } catch { $null }
 }
 
-# ---- files ----
-$LogFile = ".\deploy-log.csv"
-if (-not (Test-Path $LogFile)) {
-  "IP,Identity,MAC,Version,SSID_wlan1,SSID_wlan2,Reachable,P22Open,AuthMode,SSIDAction,UpdateAction,Note" | Out-File -Encoding ascii $LogFile
+# ---- RouterOS one-liners ----
+$CmdGetID    = ':put [/system identity get name]'
+$CmdGetVer   = ':put [/system resource get version]'
+$CmdHasWlan  = ':put ([:len [/interface find where type~"wlan"]])'
+$CmdSSID1    = ':put [/interface wireless get wlan1 ssid]'
+$CmdSSID2    = ':put [/interface wireless get wlan2 ssid]'
+$CmdDis1     = ':put [/interface wireless get wlan1 disabled]'
+$CmdDis2     = ':put [/interface wireless get wlan2 disabled]'
+
+# ---- FORCE-config blocks (always apply) ----
+$CmdDecap = @"
+/interface wireless cap set enabled=no interfaces="" discovery-interfaces="" caps-man-addresses="" certificate="" static-virtual=no
+:if ([:len [/system package find where name="caps-man"]]>0) do={/system package disable caps-man}
+:do { /caps-man manager set enabled=no } on-error={}
+"@
+
+$CmdNukeCapsMan = @"
+# wipe CAPsMAN state completely (safe if absent)
+:do { /caps-man manager set enabled=no } on-error={}
+:do { /caps-man provisioning remove [find] } on-error={}
+:do { /caps-man configuration remove [find] } on-error={}
+:do { /caps-man datapath remove [find] } on-error={}
+:do { /caps-man security remove [find] } on-error={}
+:do { /caps-man channel remove [find] } on-error={}
+:do { /caps-man rates remove [find] } on-error={}
+:do { /caps-man access-list remove [find] } on-error={}
+"@
+
+$CmdForceWireless = @"
+# hard reset wireless and remove extras
+/interface wireless disable [find]
+/interface wireless remove [find where master-interface!=""]
+/interface wireless
+:if ([:len [find where name="wlan1"]]>0) do={reset-configuration wlan1}
+:if ([:len [find where name="wlan2"]]>0) do={reset-configuration wlan2}
+/interface wireless set [find] scan-list=default country=no_country_set channel-width=20mhz
+/interface wireless access-list remove [find]
+/interface wireless connect-list remove [find]
+/interface wireless security-profiles remove [find where name!="default"]
+/interface wireless security-profiles add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers=""
+:if ([:len [find where name="wlan1"]]>0) do={set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
+:if ([:len [find where name="wlan2"]]>0) do={set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
+/interface wireless enable [find where name="wlan1"]
+/interface wireless enable [find where name="wlan2"]
+"@
+
+# Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
+$CmdNet = @"
+# Ensure bridge exists
+:local brId [/interface bridge find]; :local brName ""; :if ([:len $brId]>0) do={:set brName [/interface bridge get ($brId->0) name]} else={/interface bridge add name=bridge1; :set brName "bridge1"}
+
+# Add ALL ethernet ports to the bridge
+/interface bridge port
+:foreach e in=[/interface ethernet find] do={ :local n [/interface ethernet get $e name]; :if ([:len [find where bridge=$brName interface=$n]]=0) do={ add bridge=$brName interface=$n } }
+
+# Add WLANs to the bridge if present
+:if ([:len [/interface wireless find where name="wlan1"]]>0 && [:len [find where bridge=$brName interface="wlan1"]]=0) do={ add bridge=$brName interface=wlan1 }
+:if ([:len [/interface wireless find where name="wlan2"]]>0 && [:len [find where bridge=$brName interface="wlan2"]]=0) do={ add bridge=$brName interface=wlan2 }
+
+# VLAN $VlanId tagged on bridge + all Ethernet + present WLANs
+:local tagged "$brName"
+:foreach e in=[/interface ethernet find] do={ :set tagged "$tagged,[:tostr [/interface ethernet get $e name]]" }
+:if ([:len [/interface wireless find where name="wlan1"]]>0) do={ :set tagged "$tagged,wlan1" }
+:if ([:len [/interface wireless find where name="wlan2"]]>0) do={ :set tagged "$tagged,wlan2" }
+
+/interface bridge vlan
+:if ([:len [find where bridge=$brName vlan-ids=$VlanId]]=0) do={ add bridge=$brName vlan-ids=$VlanId tagged=$tagged } else={ set [find where bridge=$brName vlan-ids=$VlanId] tagged=$tagged }
+
+/interface bridge set [find where name=$brName] vlan-filtering=yes
+
+# Management on VLAN: create VLAN interface on bridge and move DHCP client there
+/interface vlan
+:if ([:len [find where name="mgmt.$VlanId"]]=0) do={ add name="mgmt.$VlanId" interface=$brName vlan-id=$VlanId } else={ set [find where name="mgmt.$VlanId"] interface=$brName vlan-id=$VlanId }
+
+/ip dhcp-client
+:foreach i in=[find] do={ remove $i }
+:add interface="mgmt.$VlanId" disabled=no
+"@
+
+$CmdReboot = '/system reboot without-prompt=yes'
+
+function Update-MT {
+  param($session,[string]$channel,[string]$ip)
+  try {
+    Invoke-SSHCommand -SSHSession $session -Command "/system package update set channel=$channel" | Out-Null
+    Invoke-SSHCommand -SSHSession $session -Command '/system package update check-for-updates' | Out-Null
+    $installed = (Invoke-SSHCommand -SSHSession $session -Command ':put [/system package update get installed-version]').Output -join ""
+    $latest    = (Invoke-SSHCommand -SSHSession $session -Command ':put [/system package update get latest-version]').Output -join ""
+    if ($latest -and $installed -and ($latest.Trim() -ne $installed.Trim())) {
+      try { Invoke-SSHCommand -SSHSession $session -Command '/system package update download-install' -TimeOut 180000 | Out-Null }
+      catch {
+        Invoke-SSHCommand -SSHSession $session -Command '/system package update download' -TimeOut 180000 | Out-Null
+        Invoke-SSHCommand -SSHSession $session -Command $CmdReboot | Out-Null
+      }
+      try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
+      if (Wait-ForHost $ip 300) { return (Reconnect-SSH $ip $Username $Password) } else { return $null }
+    } else { return $session }
+  } catch { return $session }
 }
+
+function Force-Config {
+  param($session,[string]$ip)
+  # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
+  Invoke-SSHCommand -SSHSession $session -Command $CmdDecap       | Out-Null
+  Invoke-SSHCommand -SSHSession $session -Command $CmdNukeCapsMan  | Out-Null
+  Invoke-SSHCommand -SSHSession $session -Command $CmdForceWireless| Out-Null
+  Invoke-SSHCommand -SSHSession $session -Command $CmdNet          | Out-Null
+  Invoke-SSHCommand -SSHSession $session -Command $CmdReboot       | Out-Null
+  try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
+  if (-not (Wait-ForHost $ip 300)) { return @{ssid1=''; ssid2=''; status='reboot-timeout'} }
+  $s = Reconnect-SSH $ip $Username $Password
+  if ($null -eq $s) { return @{ssid1=''; ssid2=''; status='reconnect-failed'} }
+  # verify and enforce up to 60s
+  $deadline = [DateTime]::UtcNow.AddSeconds(60)
+  do {
+    $s1 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
+    $s2 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
+    $d1 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
+    $d2 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
+    $ok1 = (($s1 -eq $SSID -and $d1 -eq 'false') -or ($s1 -eq '' -and $d1 -eq 'true'))
+    $ok2 = (($s2 -eq $SSID -and $d2 -eq 'false') -or ($s2 -eq '' -and $d2 -eq 'true'))
+    if ($ok1 -and $ok2) { break }
+    $enforce = @"
+/interface wireless set [find where name="wlan1"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
+/interface wireless set [find where name="wlan2"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
+/interface wireless enable [find where name="wlan1"]
+/interface wireless enable [find where name="wlan2"]
+"@
+    Invoke-SSHCommand -SSHSession $s -Command $enforce | Out-Null
+    Start-Sleep -Seconds 3
+  } while ([DateTime]::UtcNow -lt $deadline)
+  $final1 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID1).Output -join "").Trim()
+  $final2 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID2).Output -join "").Trim()
+  return @{ssid1=$final1; ssid2=$final2; status='ok'}
+}
+
+# --------- files ---------
+$LogFile = ".\deploy-log.csv"
+if (-not (Test-Path $LogFile)) { "IP,Identity,Version,SSID1,SSID2,Action,Note" | Out-File -Encoding ascii $LogFile }
 $ts = Get-Date -Format "yyyyMMdd-HHmmss"
 $SummaryFile = ".\deploy-summary-$ts.csv"
-$Summary = New-Object System.Collections.Generic.List[object]
+"IP,Identity,MAC,Version,SSID_wlan1,SSID_wlan2" | Out-File -Encoding ascii $SummaryFile
 
-# ---- main loop ----
-for ($i=$StartIP; $i -le $EndIP; $i++) {
+# ------------- main -------------
+for($i=$StartIP; $i -le $EndIP; $i++){
   $ip = "$BaseNet$i"
-  Write-Host "[$ip] Ping check..."
-  if (-not (Ping-Fast $ip)) { "$ip,,,,,`'false`',`'false`',,,-,no ping" | Add-Content $LogFile; continue }
+  Write-Host "[$ip] scanning..." -ForegroundColor Cyan
+  if (-not (Ping-Fast $ip)) { "${ip},,,,,'skip','no ping'" | Add-Content $LogFile; continue }
+  if (-not (Port22-Open $ip)) { "${ip},,,,,'skip','ssh closed'" | Add-Content $LogFile; continue }
 
-  $sumRow = [PSCustomObject]@{ IP=$ip; Identity=""; MAC=""; Version=""; SSID_wlan1=""; SSID_wlan2="" }
-
-  if (-not (Port22-Open $ip)) {
-    "$ip,,,,,`'true`',`'false`',,,-,ssh closed" | Add-Content $LogFile; continue
-  }
-
-  $conn = Try-SSH $ip $Username $Password
-  if (-not $conn) {
-    "$ip,,,,,`'true`',`'true`',,,-,ssh auth failed" | Add-Content $LogFile; continue
-  }
-
+  $conn = Connect-MT $ip $Username $Password
+  if ($null -eq $conn) { "${ip},,,,,'skip','ssh auth failed'" | Add-Content $LogFile; continue }
   $session = $conn.Session
-  $identity=""; $mac=""; $ver=""; $ssid1=""; $ssid2=""; $ssidAction="n/a"; $updAction="n/a"
 
   try {
-    # If we logged in with NO password, set it now
-    if ($conn.Mode -eq "nopass") {
-      $CmdSetPwd = "/user set [find name=$Username] password=`"$Password`""
-      Invoke-SSHCommand -SSHSession $session -Command $CmdSetPwd | Out-Null
-      Write-Host "[$ip] Password set for '$Username'." -ForegroundColor Magenta
-    }
+    # set password if we logged in with none
+    if ($conn.Mode -eq 'nopass') { Invoke-SSHCommand -SSHSession $session -Command "/user set [find name=$Username] password=\"$Password\"" | Out-Null }
 
-    # Collect details
-    $identity = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetID  -TimeOut 4000).Output -join "`n").Trim()
-    $ver      = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetVer -TimeOut 4000).Output -join "`n").Trim()
-    $macRaw   =  (Invoke-SSHCommand -SSHSession $session -Command $CmdGetMacE1 -TimeOut 4000).Output -join "`n"
-    $mac      =  ([regex]::Match($macRaw,'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')).Value
-    $ssid1    = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 2500).Output -join "`n").Trim()
-    $ssid2    = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID2 -TimeOut 2500).Output -join "`n").Trim()
+    $id  = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetID).Output -join "").Trim()
+    $ver = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetVer).Output -join "").Trim()
 
-    $sumRow.Identity   = $identity; $sumRow.MAC=$mac; $sumRow.Version=$ver; $sumRow.SSID_wlan1=$ssid1; $sumRow.SSID_wlan2=$ssid2
+    # skip if no wireless chip
+    $wlCount = [int](((Invoke-SSHCommand -SSHSession $session -Command $CmdHasWlan).Output -join "").Trim())
+    if ($wlCount -eq 0) { "${ip},$id,$ver,,,'skip','no wireless'" | Add-Content $LogFile; try{Remove-SSHSession -SSHSession $session|Out-Null}catch{}; continue }
 
-    $didProvision = $false
-
-    # Skip provisioning on boxes with no wireless
-    $wl = ((Invoke-SSHCommand -SSHSession $session -Command $CmdHasWlan -TimeOut 2500).Output -join "`n").Trim()
-    if ($wl -eq 'NOWL') {
-      $ssidAction = "no-wireless"
-      "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
-      continue
-    }
-
-    # Idempotent SSID check
-    $chkOut = (Invoke-SSHCommand -SSHSession $session -Command $CmdChkSSID -TimeOut 3500).Output -join "`n"
-    if ($chkOut -match 'PRESENT') {
-      $ssidAction = "skipped"
-    } else {
-      $ssidAction = "provisioned"
-      $didProvision = $true
-      Invoke-SSHCommand -SSHSession $session -Command $CmdProvision | Out-Null
-      # device will reboot; drop the current session
-      try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
-      # wait for it to come back and reconnect
-      if (Wait-ForHost $ip 240) {
-        $re = Reconnect-SSH $ip $Username $Password
-        if ($re -ne $null) {
-          $session = $re
-          # verify & enforce until SSID is correct and radios enabled (max 60s)
-          $deadline = [DateTime]::UtcNow.AddSeconds(60)
-          do {
-              $s1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan1 ssid]' -TimeOut 3000).Output -join "`n").Trim()
-              $s2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan2 ssid]' -TimeOut 3000).Output -join "`n").Trim()
-              $d1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan1 disabled]' -TimeOut 3000).Output -join "`n").Trim()
-              $d2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan2 disabled]' -TimeOut 3000).Output -join "`n").Trim()
-
-              $ok1 = (($s1 -eq $SSID -and $d1 -eq "false") -or ($s1 -eq "" -and $d1 -eq "true"))
-              $ok2 = (($s2 -eq $SSID -and $d2 -eq "false") -or ($s2 -eq "" -and $d2 -eq "true"))
-
-              if (-not ($ok1 -and $ok2)) {
-                  $cmdEnforce = @"
-/interface wireless set [find where name="wlan1"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
-/interface wireless set [find where name="wlan2"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
-/interface wireless enable [find where name="wlan1"];
-/interface wireless enable [find where name="wlan2"];
-"@
-                  Invoke-SSHCommand -SSHSession $session -Command $cmdEnforce | Out-Null
-                  Start-Sleep -Seconds 3
-              } else {
-                  break
-              }
-          } while ([DateTime]::UtcNow -lt $deadline)
-
-          # read final values into report
-          $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan1 ssid]' -TimeOut 3000).Output -join "`n").Trim()
-          $ssid2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless get wlan2 ssid]' -TimeOut 3000).Output -join "`n").Trim()
-          $ssidAction = "provisioned+verified"
-        } else {
-          $ssidAction = "provisioned+reconnect-failed"
-        }
-      } else {
-        $ssidAction = "provisioned+timeout"
-      }
-    }
-
-    # Optional update to long-term
+    # update (optional)
     if ($DoUpdate) {
-      Invoke-SSHCommand -SSHSession $session -Command $CmdSetLT | Out-Null
-      Invoke-SSHCommand -SSHSession $session -Command $CmdCheckUpd | Out-Null
-      $installed = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetInstVer -TimeOut 4000).Output -join "`n").Trim()
-      $latest    = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetLatest  -TimeOut 4000).Output -join "`n").Trim()
-      if ($latest -and $installed -and ($latest -ne $installed)) {
-        try {
-          Invoke-SSHCommand -SSHSession $session -Command '/system package update download-install' -TimeOut 120000 | Out-Null
-          $updAction = "download-install to $latest"
-        } catch {
-          Invoke-SSHCommand -SSHSession $session -Command '/system package update download' -TimeOut 120000 | Out-Null
-          Invoke-SSHCommand -SSHSession $session -Command '/system reboot without-prompt=yes' | Out-Null
-          $updAction = "download+reboot to $latest"
-        }
-      } else { $updAction = "up-to-date ($installed)" }
+      $session = Update-MT $session $UpdateChannel $ip
+      if ($null -eq $session) { "${ip},$id,$ver,,,'update','reconnect failed after update'" | Add-Content $LogFile; continue }
+      $ver = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetVer).Output -join "").Trim()
     }
 
-    $Summary.Add($sumRow)
-    "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
+    # force configuration
+    $res = Force-Config $session $ip
+    $ssid1 = $res.ssid1; $ssid2 = $res.ssid2
+    "${ip},$id,$ver,$ssid1,$ssid2,'configured',$($res.status)" | Add-Content $LogFile
+
+    # gather MAC (ether1 or first enabled ethernet)
+    $macRaw = (Invoke-SSHCommand -SSHSession $session -Command ':local i [/interface ethernet find where name="ether1"]; :if ([:len $i]>0) do={:put [/interface ethernet get $i mac-address]} else={:local e [/interface ethernet find where disabled=no]; :if ([:len $e]>0) do={:put ( [/interface ethernet get $e mac-address]->0 )} else={:put ""}}').Output -join ""
+    $mac = ([regex]::Match($macRaw,'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')).Value
+
+    # write summary (only connected devices)
+    "$ip,$id,$mac,$ver,$ssid1,$ssid2" | Add-Content $SummaryFile
   } catch {
-    "$ip,$identity,$mac,$ver,$ssid1,$ssid2,`'true`',`'true`',$($conn.Mode),$ssidAction,$updAction,$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
-  } finally {
-    if ($session) { Remove-SSHSession -SSHSession $session | Out-Null }
-  }
+    "${ip},,,,'error',$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
+  } finally { try { Remove-SSHSession -SSHSession $session | Out-Null } catch {} }
 }
 
-# Per-run summary of ALL ping-alive hosts
-$Summary | Export-Csv -Path $SummaryFile -NoTypeInformation -Encoding UTF8
-Write-Host "Summary: $SummaryFile"
-Write-Host "Log:     $LogFile"
+Write-Host "Summary: $SummaryFile" -ForegroundColor Green
+Write-Host "Log:     $LogFile" -ForegroundColor Green
