@@ -41,6 +41,8 @@ $CmdProvision = @"
 /interface wireless
 :if ([:len [find where name="wlan1"]]>0) do={set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no};
 :if ([:len [find where name="wlan2"]]>0) do={set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no};
+/interface wireless enable [find where name="wlan1"];
+/interface wireless enable [find where name="wlan2"];
 
 /ip dhcp-client
 :if ([:len [find where interface="ether1"]]=0) do={add interface=ether1 disabled=no} else={set [find where interface="ether1"] disabled=no};
@@ -179,6 +181,8 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
             $cmdEnforce = @"
 /interface wireless set [find where name="wlan1"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
 /interface wireless set [find where name="wlan2"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no;
+/interface wireless enable [find where name="wlan1"];
+/interface wireless enable [find where name="wlan2"];
 "@
             Invoke-SSHCommand -SSHSession $session -Command $cmdEnforce | Out-Null
             $ssid1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetSSID1 -TimeOut 4000).Output -join "`n").Trim()
