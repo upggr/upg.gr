@@ -4,27 +4,23 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # -------- CONFIG --------
 $BaseNet   = "192.168.208."
-$StartIP   = 2
+$StartIP   = 2              # set 101/101 to test one device first
 $EndIP     = 253
 $Username  = "admin"
 $Password  = "is3rupgr.1821##"
 $FetchUrl  = "https://upg.gr/mt/koukounaria.rsc"
 $DstFile   = "koukounaria.rsc"
 $SSID      = "Koukounaria Guest 9"
-$DoUpdate  = $true         # set $false to disable auto-update
+$DoUpdate  = $true          # set $false to skip RouterOS update
 # ------------------------
 
 # RouterOS command snippets
 $CmdGetID      = ':put [/system identity get name]'
-# SAFE MAC (no :break). Take first enabled ethernet, or blank.
-/*
-  Explanation:
-  - $e is the list of ethernet interfaces (enabled).
-  - ([ ... ]->0) = first element of an array.
-*/
+# Get first enabled ethernet MAC (no :break, safe on v6)
+/* removed C-style comments */
 $CmdGetMAC     = ':local e [/interface ethernet find where disabled=no]; :if ([:len $e]>0) do={:put ( [/interface ethernet get $e mac-address]->0 )} else={:put ""}'
 $CmdGetVer     = ':put [/system resource get version]'
-# SAFE wireless presence (works even if wireless package is missing)
+# Works even if wireless package is absent
 $CmdHasWlan    = ':if ([:len [/interface find where type~"wlan"]]>0) do={:put WL} else={:put NOWL}'
 $CmdChkSSID    = ":if ([:len [/interface wireless find where ssid=`"$SSID`"]] > 0) do={:put PRESENT} else={:put ABSENT}"
 $CmdProvision  = @"
@@ -51,7 +47,7 @@ function Try-SSH($ip, $user, $pass) {
   } catch { return $null }
 }
 
-# Files
+# Logs
 $LogFile = ".\deploy-log.csv"
 if (-not (Test-Path $LogFile)) {
   "IP,Identity,MAC,Version,Reachable,P22Open,AuthMode,SSIDAction,UpdateAction,Note" | Out-File -Encoding ascii $LogFile
@@ -65,7 +61,7 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
   Write-Host "[$ip] Ping check..."
   if (-not (Ping-Fast $ip)) { "$ip,,,,'false','false',,,-,no ping" | Add-Content $LogFile; continue }
 
-  # add summary row now (detected host); fill details if we get them
+  # add summary row now; fill details if we can SSH
   $sumRow = [PSCustomObject]@{ IP=$ip; Identity=""; MAC=""; Version="" }
 
   $p22 = Port22-Open $ip
@@ -85,15 +81,12 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
   $session  = $conn.Session
   $identity=""; $mac=""; $ver=""; $ssidAction="n/a"; $updAction="n/a"
   try {
-    # identity/version
     $identity = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetID  -TimeOut 4000).Output -join "`n").Trim()
     $ver      = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetVer -TimeOut 4000).Output -join "`n").Trim()
 
-    # MAC (sanitize with regex in case device prints extra lines)
-    $macRaw = (Invoke-SSHCommand -SSHSession $session -Command $CmdGetMAC -TimeOut 4000).Output -join "`n"
-    $mac    = ([regex]::Match($macRaw,'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')).Value
+    $macRaw   = (Invoke-SSHCommand -SSHSession $session -Command $CmdGetMAC -TimeOut 4000).Output -join "`n"
+    $mac      = ([regex]::Match($macRaw,'([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}')).Value
 
-    # fill summary row
     $sumRow.Identity = $identity
     $sumRow.MAC      = $mac
     $sumRow.Version  = $ver
@@ -138,14 +131,12 @@ for ($i=$StartIP; $i -le $EndIP; $i++) {
 
     "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction," | Add-Content $LogFile
   } catch {
-    # keep summary row (already added), log error
     "$ip,$identity,$mac,$ver,'true','true',$($conn.Mode),$ssidAction,$updAction,$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
   } finally {
     if ($session) { Remove-SSHSession -SSHSession $session | Out-Null }
   }
 }
 
-# Write per-run summary of ALL detected hosts
 $Summary | Export-Csv -Path $SummaryFile -NoTypeInformation -Encoding UTF8
 Write-Host "Summary: $SummaryFile"
 Write-Host "Log:     $LogFile"
