@@ -109,16 +109,10 @@ $CmdNukeCapsMan = @"
 "@
 
 $CmdForceWireless = @"
-# hard reset wireless and remove extras
-/interface wireless disable [find]
-/interface wireless remove [find where master-interface!=""]
-/interface wireless remove [find where type="virtual"]
-/interface wireless reset-configuration wlan1
-/interface wireless reset-configuration wlan2
+# Apply explicit config WITHOUT mass-disabling or resets (avoids Mikrotik defaults)
 /interface wireless security-profiles remove [find where name!="default"]
 /interface wireless security-profiles add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers=""
 
-# Apply explicit regulatory settings so radios can enable
 /interface wireless
 :if ([:len [find where name="wlan1"]]>0) do={
   set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=2ghz-b/g/n channel-width=20mhz frequency=2412 default-authentication=yes default-forwarding=yes installation=indoor antenna-gain=0 disabled=no
@@ -128,9 +122,10 @@ $CmdForceWireless = @"
   set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=5ghz-a/n/ac channel-width=20mhz frequency=5180 default-authentication=yes default-forwarding=yes installation=indoor antenna-gain=0 disabled=no
   enable wlan2
 }
-/interface wireless set [find] scan-list=default
-/interface wireless access-list remove [find]
-/interface wireless connect-list remove [find]
+# Re-assert once more after a short pause in case prior state re-applies
+:delay 2
+:if ([:len [find where name="wlan1"]]>0) do={ set wlan1 ssid="$SSID" disabled=no; enable wlan1 }
+:if ([:len [find where name="wlan2"]]>0) do={ set wlan2 ssid="$SSID" disabled=no; enable wlan2 }
 "@
 
 # Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
