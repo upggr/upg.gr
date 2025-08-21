@@ -82,12 +82,42 @@ function Exec-Step {
 
 # Prints VLAN/WLAN/DHCP checks to the console for a given session/IP/vlanId
 # Prints VLAN/WLAN/DHCP checks to the console for a given session/IP/vlanId
+
 function Dump-BridgeState {
   param($session,[string]$ip,[string]$label='STATE')
   Write-Host "$ip ⇒ [$label] Bridge/Port/VLAN state" -ForegroundColor DarkCyan
   Exec-Step -session $session -ip $ip -desc 'bridge print' -cmd '/interface bridge print detail' -ShowOut
   Exec-Step -session $session -ip $ip -desc 'bridge port print' -cmd '/interface bridge port print detail' -ShowOut
   Exec-Step -session $session -ip $ip -desc 'bridge vlan print' -cmd '/interface bridge vlan print detail' -ShowOut
+}
+
+# Probe DHCP on wlan interfaces to simulate a client obtaining an IP on VLAN 10
+function Probe-DHCP-OnWlan {
+  param($session,[string]$ip,[string]$wlan,[int]$timeoutSec=20)
+  try {
+    # Clean any previous probe
+    Invoke-SSHCommand -SSHSession $session -Command ("/ip dhcp-client remove [find where interface=\"$wlan\" comment=\"__probe__\"]") | Out-Null
+    # Add probe DHCP client (no route/DNS changes)
+    $addCmd = "/ip dhcp-client add interface=$wlan add-default-route=no use-peer-dns=no disabled=no comment=\"__probe__\""
+    $r = Invoke-SSHCommand -SSHSession $session -Command $addCmd
+
+    $sw=[Diagnostics.Stopwatch]::StartNew(); $addr=''; $status='';
+    while($sw.Elapsed.TotalSeconds -lt $timeoutSec){
+      $status = ((Invoke-SSHCommand -SSHSession $session -Command (":local id [/ip dhcp-client find where interface=\"$wlan\" comment=\"__probe__\"]; :if ([:len $id]>0) do={:put [/ip dhcp-client get $id status]} else={:put \"none\"}")).Output -join '').Trim()
+      if($status -eq 'bound'){
+        $addr = ((Invoke-SSHCommand -SSHSession $session -Command (":local id [/ip dhcp-client find where interface=\"$wlan\" comment=\"__probe__\"]; :put [/ip dhcp-client get $id address]")).Output -join '').Trim(); break
+      }
+      Start-Sleep -Milliseconds 800
+    }
+  } catch { $status = "error: $($_.Exception.Message)" }
+  finally {
+    try { Invoke-SSHCommand -SSHSession $session -Command ("/ip dhcp-client remove [find where interface=\"$wlan\" comment=\"__probe__\"]") | Out-Null } catch {}
+  }
+  if($status -eq 'bound' -and $addr){ Write-Host "$ip → [DHCP-PROBE] $wlan bound $addr [OK]" -ForegroundColor Green; return $addr }
+  elseif($status -eq 'searching' -or $status -eq 'requesting'){ Write-Host "$ip → [DHCP-PROBE] $wlan $status [WARN]" -ForegroundColor Yellow; return '' }
+  elseif($status -eq 'none'){ Write-Host "$ip → [DHCP-PROBE] $wlan probe not found [WARN]" -ForegroundColor Yellow; return '' }
+  elseif($status){ Write-Host "$ip → [DHCP-PROBE] $wlan $status [FAIL]" -ForegroundColor Red; return '' }
+  else { Write-Host "$ip → [DHCP-PROBE] $wlan unknown [FAIL]" -ForegroundColor Red; return '' }
 }
 
 function Print-NetworkChecks {
@@ -286,6 +316,10 @@ function Force-Config {
 
   # Visibility: show VLAN/port/wireless/DHCP checks
   Print-NetworkChecks -session $session -ip $ip -vlanId $VlanId
+
+  # Probe DHCP on WLANs to emulate a client getting IP on VLAN $VlanId
+  Probe-DHCP-OnWlan -session $session -ip $ip -wlan 'wlan1' | Out-Null
+  Probe-DHCP-OnWlan -session $session -ip $ip -wlan 'wlan2' | Out-Null
 
   # Pre-check: ensure SSID + radios enabled BEFORE reboot
   $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
