@@ -31,7 +31,9 @@ function Connect-MT {
     $credNone = New-Cred $user ""
     $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='nopass' }
-  } catch {}
+  } catch {
+    # suppress error, continue to password try
+  }
   # then the provided password
   try {
     $credPwd = New-Cred $user $pass
@@ -39,7 +41,7 @@ function Connect-MT {
     return @{ Session=$s; Mode='password' }
   } catch {
     $msg = $_.Exception.Message
-    Write-Host ("Auth failed for {0}: {1}" -f $ip, $msg) -ForegroundColor Red
+    Write-Host ("Auth failed for $ip: $msg") -ForegroundColor Red
     return $null
   }
 }
@@ -86,6 +88,7 @@ $CmdForceWireless = @"
 # hard reset wireless and remove extras
 /interface wireless disable [find]
 /interface wireless remove [find where master-interface!=""]
+/interface wireless remove [find where type="virtual"]
 /interface wireless
 :if ([:len [find where name="wlan1"]]>0) do={reset-configuration wlan1}
 :if ([:len [find where name="wlan2"]]>0) do={reset-configuration wlan2}
@@ -102,6 +105,7 @@ $CmdForceWireless = @"
 
 # Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
 $CmdNet = @"
+/interface bridge remove [find where name!="bridge1"]
 # Ensure bridge exists
 :local brId [/interface bridge find]; :local brName ""; :if ([:len $brId]>0) do={:set brName [/interface bridge get ($brId->0) name]} else={/interface bridge add name=bridge1; :set brName "bridge1"}
 
@@ -182,6 +186,12 @@ function Force-Config {
 /interface wireless enable [find where name="wlan1"]
 /interface wireless enable [find where name="wlan2"]
 "@
+    $enforce = @"
+:if ([:len [find where name="wlan1"]]>0) do={/interface wireless set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
+/interface wireless enable [find where name="wlan1"]
+:if ([:len [find where name="wlan2"]]>0) do={/interface wireless set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
+/interface wireless enable [find where name="wlan2"]
+"@
     Invoke-SSHCommand -SSHSession $s -Command $enforce | Out-Null
     Start-Sleep -Seconds 3
   } while ([DateTime]::UtcNow -lt $deadline)
@@ -227,7 +237,18 @@ for($i=$StartIP; $i -le $EndIP; $i++){
     }
 
     $id  = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetID).Output -join "").Trim()
+    if (-not $id) { $id = "unknown" }
     $ver = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetVer).Output -join "").Trim()
+
+    if ($id -eq "MikroTik") {
+      try {
+        $newID = "AP-$i"
+        Invoke-SSHCommand -SSHSession $session -Command "/system identity set name=$newID" | Out-Null
+        $id = $newID
+      } catch {
+        Write-Host "$ip → failed to set identity" -ForegroundColor Yellow
+      }
+    }
 
     # skip if no wireless chip
     $wlCount = [int](((Invoke-SSHCommand -SSHSession $session -Command $CmdHasWlan).Output -join "").Trim())
