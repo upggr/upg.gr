@@ -152,7 +152,7 @@ $CmdNet = @"
   :if ([:len [find where bridge=$brName interface="wlan2"]]=0) do={ add bridge=$brName interface=wlan2 pvid=$VlanId } else={ set [find where bridge=$brName interface="wlan2"] pvid=$VlanId }
 }
 
-# VLAN $VlanId: bridge+ethernet = tagged (trunk), WLANs = untagged (access)
+# VLAN (configured ID): bridge+ethernet = tagged (trunk), WLANs = untagged (access)
 :local tagged "$brName"
 :foreach e in=[/interface ethernet find] do={ :set tagged "$tagged,[:tostr [/interface ethernet get $e name]]" }
 :local untagged ""
