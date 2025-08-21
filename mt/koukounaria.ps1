@@ -166,20 +166,23 @@ function Force-Config {
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
   Write-Host "$ip → Disabling CAPsMAN and CAP..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdDecap       | Out-Null
+  Write-Host "$ip → CAPsMAN and CAP disabled" -ForegroundColor Green
+
   Write-Host "$ip → Wiping CAPsMAN state..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdNukeCapsMan  | Out-Null
-  Write-Host "$ip → Disabling CAPsMAN and wiping state done" -ForegroundColor DarkGreen
+  Write-Host "$ip → CAPsMAN state wiped" -ForegroundColor Green
 
   Write-Host "$ip → Applying wireless configuration..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdForceWireless| Out-Null
-  Write-Host "$ip → Wireless config applied" -ForegroundColor DarkGreen
+  Write-Host "$ip → Wireless configuration applied" -ForegroundColor Green
 
   Write-Host "$ip → Configuring bridge and VLANs..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdNet          | Out-Null
-  Write-Host "$ip → Bridge and VLAN configuration applied" -ForegroundColor DarkGreen
+  Write-Host "$ip → Bridge and VLAN configuration applied" -ForegroundColor Green
 
   Write-Host "$ip → Rebooting device..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdReboot       | Out-Null
+  Write-Host "$ip → Reboot command issued" -ForegroundColor Green
   try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
 
   Write-Host "$ip → Waiting for device to come back online..." -ForegroundColor Gray
@@ -275,7 +278,7 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 
     # force configuration
     $res = Force-Config $session $ip
-    Write-Host "$ip → Force-config result: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' Status='$($res.status)'" -ForegroundColor Blue
+    Write-Host "$ip → Force-config result: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' Status='$($res.status)'" -ForegroundColor Cyan
     if ($res.status -ne 'ok') {
       Write-Host "$ip → configuration incomplete: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' status=$($res.status)" -ForegroundColor Red
     }
