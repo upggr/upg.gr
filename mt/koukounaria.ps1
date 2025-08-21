@@ -38,7 +38,8 @@ function Connect-MT {
     $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='password' }
   } catch {
-    Write-Host "Auth failed for $ip: $($_.Exception.Message)" -ForegroundColor Red
+    $msg = $_.Exception.Message
+    Write-Host "Auth failed for $ip: $msg" -ForegroundColor Red
     return $null
   }
 }
