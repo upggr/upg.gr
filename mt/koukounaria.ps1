@@ -113,20 +113,24 @@ $CmdForceWireless = @"
 /interface wireless disable [find]
 /interface wireless remove [find where master-interface!=""]
 /interface wireless remove [find where type="virtual"]
+/interface wireless reset-configuration wlan1
+/interface wireless reset-configuration wlan2
+/interface wireless security-profiles remove [find where name!="default"]
+/interface wireless security-profiles add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers=""
+
+# Apply explicit regulatory settings so radios can enable
 /interface wireless
 :if ([:len [find where name="wlan1"]]>0) do={
-  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open disabled=no
+  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=2ghz-b/g/n channel-width=20mhz disabled=no
   enable wlan1
 }
 :if ([:len [find where name="wlan2"]]>0) do={
-  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open disabled=no
+  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=5ghz-a/n/ac channel-width=20mhz disabled=no
   enable wlan2
 }
-/interface wireless set [find] scan-list=default country=no_country_set channel-width=20mhz
+/interface wireless set [find] scan-list=default
 /interface wireless access-list remove [find]
 /interface wireless connect-list remove [find]
-/interface wireless security-profiles remove [find where name!="default"]
-/interface wireless security-profiles add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers=""
 "@
 
 # Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
