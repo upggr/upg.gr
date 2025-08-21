@@ -220,14 +220,6 @@ for($i=$StartIP; $i -le $EndIP; $i++){
   $session = $conn.Session
 
   try {
-    # set password if we logged in with none
-    if ($conn.Mode -eq 'nopass') {
-      try {
-        Invoke-SSHCommand -SSHSession $session -Command "/user set [find name=$Username] password=\"$Password\"" | Out-Null
-      } catch {
-        Write-Host "$ip → skipping password set (likely password expired screen)" -ForegroundColor Yellow
-      }
-    }
 
     # Ensure password is what we expect and disable expiry (v6/v7). If 'password-expire' isn't supported, fall back silently.
     try {
