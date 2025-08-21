@@ -67,8 +67,8 @@ $CmdDis2     = ':put [/interface wireless get wlan2 disabled]'
 # ---- FORCE-config blocks (always apply) ----
 $CmdDecap = @"
 /interface wireless cap set enabled=no interfaces="" discovery-interfaces="" caps-man-addresses="" certificate="" static-virtual=no
-:if ([:len [/system package find where name="caps-man"]]>0) do={/system package uninstall caps-man}
-/system reboot
+:do { /caps-man manager set enabled=no } on-error={}
+:do { /system package disable caps-man } on-error={}
 "@
 
 $CmdNukeCapsMan = @"
@@ -166,7 +166,12 @@ function Force-Config {
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
   Write-Host "$ip → Disabling CAPsMAN and CAP..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdDecap       | Out-Null
-  Invoke-SSHCommand -SSHSession $session -Command '/system package uninstall caps-man' | Out-Null
+  # Verification: check if CAP is really off, retry if needed
+  $capEnabled = (Invoke-SSHCommand -SSHSession $session -Command ':put [/interface wireless cap get enabled]').Output -join ""
+  if ($capEnabled.Trim() -eq 'true') {
+    Write-Host "$ip → WARNING: CAP still enabled; attempting to force off again" -ForegroundColor Yellow
+    Invoke-SSHCommand -SSHSession $session -Command '/interface wireless cap set enabled=no' | Out-Null
+  }
   Write-Host "$ip → CAPsMAN and CAP disabled" -ForegroundColor Green
 
   Write-Host "$ip → Wiping CAPsMAN state..." -ForegroundColor Gray
