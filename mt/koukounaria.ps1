@@ -121,11 +121,11 @@ $CmdForceWireless = @"
 # Apply explicit regulatory settings so radios can enable
 /interface wireless
 :if ([:len [find where name="wlan1"]]>0) do={
-  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=2ghz-b/g/n channel-width=20mhz disabled=no
+  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=2ghz-b/g/n channel-width=20mhz frequency=2412 default-authentication=yes default-forwarding=yes installation=indoor antenna-gain=0 disabled=no
   enable wlan1
 }
 :if ([:len [find where name="wlan2"]]>0) do={
-  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=5ghz-a/n/ac channel-width=20mhz disabled=no
+  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=5ghz-a/n/ac channel-width=20mhz frequency=5180 default-authentication=yes default-forwarding=yes installation=indoor antenna-gain=0 disabled=no
   enable wlan2
 }
 /interface wireless set [find] scan-list=default
