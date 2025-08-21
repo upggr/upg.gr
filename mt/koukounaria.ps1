@@ -195,10 +195,10 @@ function Force-Config {
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdDecap        -desc 'Disabling CAPsMAN and CAP').ok) { return @{ssid1=''; ssid2=''; status='caps-disable-failed'; session=$session} }
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNukeCapsMan   -desc 'Wiping CAPsMAN state').ok)      { return @{ssid1=''; ssid2=''; status='caps-wipe-failed';   session=$session} }
-  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan1 ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan1').ok) { Write-Host "$ip → note: wlan1 may not exist" -ForegroundColor DarkYellow }
-  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan1" -desc 'Enable wlan1').ok) { Write-Host "$ip → note: enable wlan1 failed/absent" -ForegroundColor DarkYellow }
-  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan2 ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
-  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan2" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan1] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan1').ok) { Write-Host "$ip → note: wlan1 may not exist" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan1]" -desc 'Enable wlan1').ok) { Write-Host "$ip → note: enable wlan1 failed/absent" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNet           -desc 'Configuring bridge and VLANs').ok) { return @{ssid1=''; ssid2=''; status='bridge-vlan-failed'; session=$session} }
 
   # Pre-check: ensure SSID + radios enabled BEFORE reboot
@@ -211,10 +211,10 @@ function Force-Config {
 
   if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host "$ip → SSID not applied yet; enforcing before reboot..." -ForegroundColor Yellow
-    $enf1 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan1 ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan1'
-    $enf2 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan1" -desc 'Enforce enable wlan1'
-    $enf3 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan2 ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan2'
-    $enf4 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan2" -desc 'Enforce enable wlan2'
+    $enf1 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan1] ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan1'
+    $enf2 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan1]" -desc 'Enforce enable wlan1'
+    $enf3 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan2'
+    $enf4 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enforce enable wlan2'
     if (-not ($enf1.ok -or $enf3.ok)) { return @{ssid1=$pre_s1; ssid2=$pre_s2; status='enforce-failed'; session=$session} }
     Start-Sleep -Seconds 3
     $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
