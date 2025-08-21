@@ -297,11 +297,11 @@ function Force-Config {
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNukeCapsMan   -desc 'Wiping CAPsMAN state').ok)      { return @{ssid1=''; ssid2=''; status='caps-wipe-failed';   session=$session} }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan1] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan1').ok) { Write-Host "$ip → note: wlan1 may not exist" -ForegroundColor DarkYellow }
   # Set country to Greece after setting SSID
-  Exec-Step -session $session -ip $ip -cmd '/interface wireless set wlan1 country="greece"' -desc 'Set country=greece on wlan1' | Out-Null
+  Exec-Step -session $session -ip $ip -cmd '/interface wireless set wlan1 country="greece"' -desc 'Set country="greece" on wlan1' | Out-Null
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan1]" -desc 'Enable wlan1').ok) { Write-Host "$ip → note: enable wlan1 failed/absent" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
   # Set country to Greece after setting SSID
-  Exec-Step -session $session -ip $ip -cmd '/interface wireless set wlan2 country="greece"' -desc 'Set country=greece on wlan2' | Out-Null
+  Exec-Step -session $session -ip $ip -cmd '/interface wireless set wlan2 country="greece"' -desc 'Set country="greece" on wlan2' | Out-Null
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
   # --- PRE state dump ---
   Dump-BridgeState -session $session -ip $ip -label 'PRE'
