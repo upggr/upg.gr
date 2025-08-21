@@ -78,6 +78,57 @@ function Exec-Step {
   }
 }
 
+# Prints VLAN/WLAN/DHCP checks to the console for a given session/IP/vlanId
+function Print-NetworkChecks {
+  param($session,[string]$ip,[int]$vlanId)
+  try {
+    $br = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/interface bridge get [find] name]').Output -join '').Trim(); if(-not $br){$br='bridge1'}
+
+    # VLAN filtering state
+    $bf = ((Invoke-SSHCommand -SSHSession $session -Command (":put [/interface bridge get $br vlan-filtering]")).Output -join '').Trim()
+    Write-Host "$ip → [CHECK] Bridge $br vlan-filtering=$bf" -ForegroundColor DarkCyan
+
+    # VLAN table entry for vlanId
+    $cmdVlan = ":local id [/interface bridge vlan find where bridge=$br vlan-ids=$vlanId]; :if ([:len $id]>0) do={:put (\"present tagged=\".[:tostr [/interface bridge vlan get $id tagged]].\" untagged=\".[:tostr [/interface bridge vlan get $id untagged]])} else={:put \"missing\"}"
+    $vlanInfo = ((Invoke-SSHCommand -SSHSession $session -Command $cmdVlan).Output -join '').Trim()
+    if ($vlanInfo -match '^present') { Write-Host ("$ip → [CHECK] VLAN {0} on {1}: {2} [OK]" -f $vlanId,$br,$vlanInfo) -ForegroundColor Green } else { Write-Host ("$ip → [CHECK] VLAN {0}: missing [FAIL]" -f $vlanId) -ForegroundColor Red }
+
+    # PVID on wlan ports
+    foreach($w in 'wlan1','wlan2'){
+      $pvidCmd = ":local id [/interface bridge port find where interface=$w]; :if ([:len $id]>0) do={:put [/interface bridge port get $id pvid]} else={:put \"na\"}"
+      $pvid = ((Invoke-SSHCommand -SSHSession $session -Command $pvidCmd).Output -join '').Trim()
+      if($pvid -eq 'na'){ Write-Host "$ip → [CHECK] $w in bridge: not present [WARN]" -ForegroundColor Yellow }
+      elseif([int]$pvid -eq $vlanId){ Write-Host "$ip → [CHECK] $w pvid=$pvid [OK]" -ForegroundColor Green }
+      else{ Write-Host "$ip → [CHECK] $w pvid=$pvid (expected $vlanId) [FAIL]" -ForegroundColor Red }
+    }
+
+    # Wireless SSID/disabled/running
+    foreach($w in 'wlan1','wlan2'){
+      $ssid = ((Invoke-SSHCommand -SSHSession $session -Command (":put [/interface wireless get $w ssid]")).Output -join '').Trim()
+      $dis  = ((Invoke-SSHCommand -SSHSession $session -Command (":put [/interface wireless get $w disabled]")).Output -join '').Trim()
+      $run  = ((Invoke-SSHCommand -SSHSession $session -Command (":put [/interface wireless get $w running]")).Output -join '').Trim()
+      if($ssid){
+        $ok = ($dis -eq 'false' -and $run -eq 'true')
+        $st = if($ok){'OK'} else {'WARN'}
+        $color = if($ok){'Green'} else {'Yellow'}
+        Write-Host ("$ip → [CHECK] {0}: ssid='{1}' disabled={2} running={3} [{4}]" -f $w,$ssid,$dis,$run,$st) -ForegroundColor $color
+      }
+    }
+
+    # DHCP client on mgmt.<vlanId>
+    $cmdDhcp = ":local id [/ip dhcp-client find where interface=\"mgmt.$vlanId\"]; :if ([:len $id]>0) do={:put ( [/ip dhcp-client get $id status].\" \".[/ip dhcp-client get $id address])} else={:put \"none\"}"
+    $dhcpInfo = ((Invoke-SSHCommand -SSHSession $session -Command $cmdDhcp).Output -join '').Trim()
+    if($dhcpInfo -ne 'none'){
+      if($dhcpInfo -match '^bound'){ Write-Host "$ip → [CHECK] DHCP client on mgmt.$vlanId: $dhcpInfo [OK]" -ForegroundColor Green }
+      else{ Write-Host "$ip → [CHECK] DHCP client on mgmt.$vlanId: $dhcpInfo [WARN]" -ForegroundColor Yellow }
+    } else {
+      Write-Host "$ip → [CHECK] DHCP client on mgmt.$vlanId: none [INFO]" -ForegroundColor DarkGray
+    }
+  } catch {
+    Write-Host "$ip → [CHECK] error: $($_.Exception.Message)" -ForegroundColor Red
+  }
+}
+
 # ---- RouterOS one-liners ----
 $CmdGetID    = ':put [/system identity get name]'
 $CmdGetVer   = ':put [/system resource get version]'
@@ -200,6 +251,9 @@ function Force-Config {
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNet           -desc 'Configuring bridge and VLANs').ok) { return @{ssid1=''; ssid2=''; status='bridge-vlan-failed'; session=$session} }
+
+  # Visibility: show VLAN/port/wireless/DHCP checks
+  Print-NetworkChecks -session $session -ip $ip -vlanId $VlanId
 
   # Pre-check: ensure SSID + radios enabled BEFORE reboot
   $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
