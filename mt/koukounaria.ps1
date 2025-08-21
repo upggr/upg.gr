@@ -29,13 +29,13 @@ function Connect-MT {
   # try no password first
   try {
     $credNone = New-Cred $user ""
-    $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop
+    $s = New-SSHSession -ComputerName $ip -Credential $credNone -AcceptKey -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='nopass' }
   } catch {}
   # then the provided password
   try {
     $credPwd = New-Cred $user $pass
-    $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop
+    $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='password' }
   } catch {
     $msg = $_.Exception.Message
@@ -51,7 +51,7 @@ function Wait-ForHost { param([string]$ip,[int]$timeoutSec=300)
 }
 
 function Reconnect-SSH { param([string]$ip,[string]$user,[string]$pass)
-  try { New-SSHSession -ComputerName $ip -Credential (New-Cred $user $pass) -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop } catch { $null }
+  try { New-SSHSession -ComputerName $ip -Credential (New-Cred $user $pass) -AcceptKey -ConnectionTimeout 15000 -ErrorAction Stop } catch { $null }
 }
 
 # ---- RouterOS one-liners ----
