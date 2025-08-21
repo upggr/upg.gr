@@ -4,7 +4,7 @@ Import-Module Posh-SSH -ErrorAction Stop
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
 $StartIP        = 155       # inclusive
-$EndIP          = 156      # inclusive
+$EndIP          = 166      # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Hotel Guest"
@@ -296,8 +296,12 @@ function Force-Config {
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdDecap        -desc 'Disabling CAPsMAN and CAP').ok) { return @{ssid1=''; ssid2=''; status='caps-disable-failed'; session=$session} }
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNukeCapsMan   -desc 'Wiping CAPsMAN state').ok)      { return @{ssid1=''; ssid2=''; status='caps-wipe-failed';   session=$session} }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan1] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan1').ok) { Write-Host "$ip → note: wlan1 may not exist" -ForegroundColor DarkYellow }
+  # Set country to Greece after setting SSID
+  Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan1 country=Greece" -desc 'Set country=Greece on wlan1' | Out-Null
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan1]" -desc 'Enable wlan1').ok) { Write-Host "$ip → note: enable wlan1 failed/absent" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
+  # Set country to Greece after setting SSID
+  Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan2 country=Greece" -desc 'Set country=Greece on wlan2' | Out-Null
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
   # --- PRE state dump ---
   Dump-BridgeState -session $session -ip $ip -label 'PRE'
@@ -332,7 +336,9 @@ Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
   /interface wireless cap disable;
   /interface wireless enable wlan1,wlan2;
   /interface wireless set wlan1 ssid=`"$ssid`";
+  /interface wireless set wlan1 country=Greece;
   /interface wireless set wlan2 ssid=`"$ssid`";
+  /interface wireless set wlan2 country=Greece;
   /interface bridge port set [find interface=wlan1] pvid=10;
   /interface bridge port set [find interface=wlan2] pvid=10;
 } on-error={:put "=== ERROR applying SSID/VLAN settings ==="}
