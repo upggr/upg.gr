@@ -37,7 +37,10 @@ function Connect-MT {
     $credPwd = New-Cred $user $pass
     $s = New-SSHSession -ComputerName $ip -Credential $credPwd -AcceptKey -KeyExchange $KexLegacy -Mac $MacLegacy -Cipher $CipherLegacy -HostKeyAlgorithms $HostKeyLegacy -ConnectionTimeout 15000 -ErrorAction Stop
     return @{ Session=$s; Mode='password' }
-  } catch { return $null }
+  } catch {
+    Write-Host "Auth failed for $ip: $($_.Exception.Message)" -ForegroundColor Red
+    return $null
+  }
 }
 
 function Wait-ForHost { param([string]$ip,[int]$timeoutSec=300)
@@ -201,6 +204,7 @@ for($i=$StartIP; $i -le $EndIP; $i++){
   if (-not (Port22-Open $ip)) { "${ip},,,,,'skip','ssh closed'" | Add-Content $LogFile; continue }
 
   $conn = Connect-MT $ip $Username $Password
+  if ($conn) { Write-Host "$ip → SSH OK ($($conn.Mode))" -ForegroundColor Green }
   if ($null -eq $conn) { "${ip},,,,,'skip','ssh auth failed'" | Add-Content $LogFile; continue }
   $session = $conn.Session
 
