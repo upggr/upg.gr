@@ -61,7 +61,8 @@ function Exec-Step {
     $session,
     [string]$ip,
     [string]$cmd,
-    [string]$desc
+    [string]$desc,
+    [switch]$ShowOut
   )
   Write-Host "$ip → $desc..." -ForegroundColor Gray
   try {
@@ -70,6 +71,7 @@ function Exec-Step {
     $err = ($r.Error  -join "").Trim()
     if ($err) { Write-Host "$ip → FAIL: $desc :: $err" -ForegroundColor Red; return @{ ok=$false; out=$out; err=$err } }
     Write-Host "$ip → OK: $desc" -ForegroundColor Green
+    if ($ShowOut -and $out) { Write-Host ("$ip ← $out") -ForegroundColor DarkGray }
     return @{ ok=$true; out=$out; err='' }
   } catch {
     $em = $_.Exception.Message
@@ -79,6 +81,15 @@ function Exec-Step {
 }
 
 # Prints VLAN/WLAN/DHCP checks to the console for a given session/IP/vlanId
+# Prints VLAN/WLAN/DHCP checks to the console for a given session/IP/vlanId
+function Dump-BridgeState {
+  param($session,[string]$ip,[string]$label='STATE')
+  Write-Host "$ip ⇒ [$label] Bridge/Port/VLAN state" -ForegroundColor DarkCyan
+  Exec-Step -session $session -ip $ip -desc 'bridge print' -cmd '/interface bridge print detail' -ShowOut
+  Exec-Step -session $session -ip $ip -desc 'bridge port print' -cmd '/interface bridge port print detail' -ShowOut
+  Exec-Step -session $session -ip $ip -desc 'bridge vlan print' -cmd '/interface bridge vlan print detail' -ShowOut
+}
+
 function Print-NetworkChecks {
   param($session,[string]$ip,[int]$vlanId)
   try {
@@ -172,7 +183,7 @@ $CmdForceWireless = @"
 :do { enable wlan2 } on-error={}
 "@
 
-# Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
+/ # legacy (unused)
 $CmdNet = @'
 /interface bridge remove [find where name~"^bridge" and name!="bridge1"]
 # Ensure bridge exists
@@ -253,8 +264,23 @@ function Force-Config {
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan1]" -desc 'Enable wlan1').ok) { Write-Host "$ip → note: enable wlan1 failed/absent" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
-  $CmdNetFinal = $CmdNet.Replace('__VID__', $VlanId.ToString())
-  if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNetFinal -desc 'Configuring bridge and VLANs').ok) { return @{ssid1=''; ssid2=''; status='bridge-vlan-failed'; session=$session} }
+  # --- PRE state dump ---
+  Dump-BridgeState -session $session -ip $ip -label 'PRE'
+
+  # Ensure bridge1 exists
+  if (-not (Exec-Step -session $session -ip $ip -cmd ':do {/interface bridge add name=bridge1} on-error={}' -desc 'ensure bridge1').ok) { return @{ssid1=''; ssid2=''; status='bridge-add-failed'; session=$session} }
+
+  # Add ports (idempotent) and set WLAN PVIDs
+  if (-not (Exec-Step -session $session -ip $ip -cmd ":do {/interface bridge port add bridge=bridge1 interface=wlan1 pvid=$VlanId} on-error={}" -desc 'add wlan1 to bridge1 pvid' ).ok) { Write-Host "$ip → note: wlan1 add/pvid may have failed" -ForegroundColor Yellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd ":do {/interface bridge port add bridge=bridge1 interface=wlan2 pvid=$VlanId} on-error={}" -desc 'add wlan2 to bridge1 pvid' ).ok) { Write-Host "$ip → note: wlan2 add/pvid may have failed" -ForegroundColor Yellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd ':do {/interface bridge port add bridge=bridge1 interface=ether1} on-error={}' -desc 'add ether1 to bridge1 (trunk)').ok) { Write-Host "$ip → note: ether1 add may have failed" -ForegroundColor Yellow }
+
+  # Create/refresh VLAN row and enable filtering
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan add bridge=bridge1 vlan-ids=$VlanId tagged=bridge1,ether1 untagged=wlan1,wlan2" -desc 'add VLAN row (10)').ok) { Write-Host "$ip → VLAN add may already exist; trying set" -ForegroundColor Yellow; Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan set [find where bridge=bridge1 vlan-ids=$VlanId] tagged=bridge1,ether1 untagged=wlan1,wlan2" -desc 'set VLAN row (10)' | Out-Null }
+  if (-not (Exec-Step -session $session -ip $ip -cmd '/interface bridge set [find where name=bridge1] vlan-filtering=yes' -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
+
+  # --- POST state dump ---
+  Dump-BridgeState -session $session -ip $ip -label 'POST'
 
   # Visibility: show VLAN/port/wireless/DHCP checks
   Print-NetworkChecks -session $session -ip $ip -vlanId $VlanId
