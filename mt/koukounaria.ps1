@@ -331,8 +331,8 @@ Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
 '; :do {
   /interface wireless cap disable;
   /interface wireless enable wlan1,wlan2;
-  /interface wireless set wlan1 ssid="Koukounaria Guest 9";
-  /interface wireless set wlan2 ssid="Koukounaria Guest 9";
+  /interface wireless set wlan1 ssid=`"$ssid`";
+  /interface wireless set wlan2 ssid=`"$ssid`";
   /interface bridge port set [find interface=wlan1] pvid=10;
   /interface bridge port set [find interface=wlan2] pvid=10;
 } on-error={:put "=== ERROR applying SSID/VLAN settings ==="}
@@ -344,8 +344,8 @@ Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
   $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
   $pre_d1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
   $pre_d2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
-  $pre_ok1 = (($pre_s1 -eq "Koukounaria Guest 9" -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
-  $pre_ok2 = (($pre_s2 -eq "Koukounaria Guest 9" -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
+  $pre_ok1 = (($pre_s1 -eq $ssid -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
+  $pre_ok2 = (($pre_s2 -eq $ssid -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
   if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host ("$ip → ERROR: SSID/VLAN not applied; wlan1='{0}' disabled={1} wlan2='{2}' disabled={3}" -f $pre_s1,$pre_d1,$pre_s2,$pre_d2) -ForegroundColor Red
     return @{ssid1=$pre_s1; ssid2=$pre_s2; status='apply-failed'; session=$session}
