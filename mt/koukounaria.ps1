@@ -452,6 +452,12 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 
     if ($wlCount -eq 0) { "${ip},$id,$ver,,,'skip','no wireless'" | Add-Content $LogFile; try{Remove-SSHSession -SSHSession $session|Out-Null}catch{}; continue }
 
+    # Remove any leftover virtual wireless interfaces
+    $removeVirtuals = @"
+/interface wireless remove [find where type=virtual]
+"@
+    Exec-Step -session $session -ip $ip -cmd $removeVirtuals -desc "Remove virtual wireless interfaces"
+
     # force configuration first
     $res = Force-Config $session $ip
     Write-Host "$ip → Force-config result: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' Status='$($res.status)'" -ForegroundColor Cyan
