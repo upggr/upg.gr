@@ -41,9 +41,8 @@ function Connect-MT {
     return @{ Session=$s; Mode='password' }
   } catch {
     $msg = $_.Exception.Message
-    Write-Host ("Auth failed for $ip: $msg") -ForegroundColor Red
-    return $null
   }
+  return $null
 }
 
 function Wait-ForHost { param([string]$ip,[int]$timeoutSec=300)
