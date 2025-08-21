@@ -111,8 +111,10 @@ $CmdNukeCapsMan = @"
 $CmdForceWireless = @"
 # Minimal explicit apply: set SSID and enable radios (no mass disable/reset)
 /interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={ set wlan1 ssid="$SSID" disabled=no; enable wlan1 }
-:if ([:len [find where name="wlan2"]]>0) do={ set wlan2 ssid="$SSID" disabled=no; enable wlan2 }
+:do { set wlan1 mode=ap-bridge ssid="$SSID" disabled=no } on-error={}
+:do { enable wlan1 } on-error={}
+:do { set wlan2 mode=ap-bridge ssid="$SSID" disabled=no } on-error={}
+:do { enable wlan2 } on-error={}
 "@
 
 # Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
@@ -207,8 +209,10 @@ function Force-Config {
     Write-Host "$ip → SSID not applied yet; enforcing before reboot..." -ForegroundColor Yellow
     $enforceNow = @"
 /interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={ set wlan1 ssid="$SSID" disabled=no; enable wlan1 }
-:if ([:len [find where name="wlan2"]]>0) do={ set wlan2 ssid="$SSID" disabled=no; enable wlan2 }
+:do { set wlan1 ssid="$SSID" disabled=no } on-error={}
+:do { enable wlan1 } on-error={}
+:do { set wlan2 ssid="$SSID" disabled=no } on-error={}
+:do { enable wlan2 } on-error={}
 "@
     $enf = Exec-Step -session $session -ip $ip -cmd $enforceNow -desc 'Enforcing SSID enable on wlan1/2'
     if (-not $enf.ok) { return @{ssid1=$pre_s1; ssid2=$pre_s2; status='enforce-failed'; session=$session} }
