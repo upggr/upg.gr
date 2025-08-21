@@ -4,7 +4,7 @@ Import-Module Posh-SSH -ErrorAction Stop
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
 $StartIP        = 116        # inclusive
-$EndIP          = 118       # inclusive
+$EndIP          = 117       # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Guest 9"
@@ -42,7 +42,7 @@ function Connect-MT {
   } catch {
     $msg = $_.Exception.Message
   }
-  return $null
+  return @{ Session=$null; Mode='password' }
 }
 
 function Wait-ForHost { param([string]$ip,[int]$timeoutSec=300)
@@ -89,22 +89,24 @@ $CmdForceWireless = @"
 /interface wireless remove [find where master-interface!=""]
 /interface wireless remove [find where type="virtual"]
 /interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={reset-configuration wlan1}
-:if ([:len [find where name="wlan2"]]>0) do={reset-configuration wlan2}
+:if ([:len [find where name="wlan1"]]>0) do={
+  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
+  enable wlan1
+}
+:if ([:len [find where name="wlan2"]]>0) do={
+  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
+  enable wlan2
+}
 /interface wireless set [find] scan-list=default country=no_country_set channel-width=20mhz
 /interface wireless access-list remove [find]
 /interface wireless connect-list remove [find]
 /interface wireless security-profiles remove [find where name!="default"]
 /interface wireless security-profiles add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers=""
-:if ([:len [find where name="wlan1"]]>0) do={set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
-:if ([:len [find where name="wlan2"]]>0) do={set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
-/interface wireless enable [find where name="wlan1"]
-/interface wireless enable [find where name="wlan2"]
 "@
 
 # Bridge all ports; trunk VLAN $VlanId; put management on VLAN $VlanId (DHCP client on bridge VLAN interface)
 $CmdNet = @"
-/interface bridge remove [find where name!="bridge1"]
+/interface bridge remove [find where name~"^bridge" and name!="bridge1"]
 # Ensure bridge exists
 :local brId [/interface bridge find]; :local brName ""; :if ([:len $brId]>0) do={:set brName [/interface bridge get ($brId->0) name]} else={/interface bridge add name=bridge1; :set brName "bridge1"}
 
@@ -159,6 +161,7 @@ function Update-MT {
 
 function Force-Config {
   param($session,[string]$ip)
+  if ($null -eq $session) { return @{ssid1=''; ssid2=''; status='forced-no-session'} }
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
   Invoke-SSHCommand -SSHSession $session -Command $CmdDecap       | Out-Null
   Invoke-SSHCommand -SSHSession $session -Command $CmdNukeCapsMan  | Out-Null
@@ -180,16 +183,15 @@ function Force-Config {
     $ok2 = (($s2 -eq $SSID -and $d2 -eq 'false') -or ($s2 -eq '' -and $d2 -eq 'true'))
     if ($ok1 -and $ok2) { break }
     $enforce = @"
-/interface wireless set [find where name="wlan1"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
-/interface wireless set [find where name="wlan2"] mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
-/interface wireless enable [find where name="wlan1"]
-/interface wireless enable [find where name="wlan2"]
-"@
-    $enforce = @"
-:if ([:len [find where name="wlan1"]]>0) do={/interface wireless set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
-/interface wireless enable [find where name="wlan1"]
-:if ([:len [find where name="wlan2"]]>0) do={/interface wireless set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no}
-/interface wireless enable [find where name="wlan2"]
+/interface wireless
+:if ([:len [find where name="wlan1"]]>0) do={
+  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
+  enable wlan1
+}
+:if ([:len [find where name="wlan2"]]>0) do={
+  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no
+  enable wlan2
+}
 "@
     Invoke-SSHCommand -SSHSession $s -Command $enforce | Out-Null
     Start-Sleep -Seconds 3
@@ -254,6 +256,9 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 
     # force configuration
     $res = Force-Config $session $ip
+    if ($res.status -ne 'ok') {
+      Write-Host "$ip → configuration incomplete: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' status=$($res.status)" -ForegroundColor Red
+    }
     if ($res.ContainsKey('session') -and $null -ne $res.session) { $session = $res.session }
     if ($null -eq $session) { $session = Reconnect-SSH $ip $Username $Password }
     $ssid1 = $res.ssid1; $ssid2 = $res.ssid2
@@ -270,7 +275,11 @@ for($i=$StartIP; $i -le $EndIP; $i++){
     "$ip,$id,$mac,$ver,$ssid1,$ssid2" | Add-Content $SummaryFile
   } catch {
     "${ip},,,,'error',$($_.Exception.Message -replace ',',';')" | Add-Content $LogFile
-  } finally { try { Remove-SSHSession -SSHSession $session | Out-Null } catch {} }
+  } finally {
+    if ($res.status -eq 'ok') {
+      try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
+    }
+  }
 }
 
 Write-Host "Summary: $SummaryFile" -ForegroundColor Green
