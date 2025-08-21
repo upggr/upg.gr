@@ -39,7 +39,7 @@ function Connect-MT {
     return @{ Session=$s; Mode='password' }
   } catch {
     $msg = $_.Exception.Message
-    Write-Host "Auth failed for $ip: $msg" -ForegroundColor Red
+    Write-Host ("Auth failed for {0}: {1}" -f $ip, $msg) -ForegroundColor Red
     return $null
   }
 }
