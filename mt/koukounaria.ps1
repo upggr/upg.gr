@@ -211,13 +211,19 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 
   try {
     # set password if we logged in with none
-    if ($conn.Mode -eq 'nopass') { Invoke-SSHCommand -SSHSession $session -Command "/user set [find name=$Username] password=\"$Password\"" | Out-Null }
+    if ($conn.Mode -eq 'nopass') {
+      try {
+        Invoke-SSHCommand -SSHSession $session -Command "/user set [find name=$Username] password=\"$Password\"" | Out-Null
+      } catch {
+        Write-Host "$ip → skipping password set (likely password expired screen)" -ForegroundColor Yellow
+      }
+    }
 
     # Ensure password is what we expect and disable expiry (v6/v7). If 'password-expire' isn't supported, fall back silently.
     try {
       Invoke-SSHCommand -SSHSession $session -Command "/user set [find name=$Username] password=\"$Password\" password-expire=0" | Out-Null
     } catch {
-      try { Invoke-SSHCommand -SSHSession $session -Command "/user set [find name=$Username] password=\"$Password\"" | Out-Null } catch {}
+      Write-Host "$ip → skipping password-expire setting (not supported)" -ForegroundColor DarkYellow
     }
 
     $id  = ((Invoke-SSHCommand -SSHSession $session -Command $CmdGetID).Output -join "").Trim()
