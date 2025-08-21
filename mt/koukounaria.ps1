@@ -161,18 +161,36 @@ function Update-MT {
 
 function Force-Config {
   param($session,[string]$ip)
+  Write-Host "$ip → Starting forced configuration..." -ForegroundColor Magenta
   if ($null -eq $session) { return @{ssid1=''; ssid2=''; status='forced-no-session'} }
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
+  Write-Host "$ip → Disabling CAPsMAN and CAP..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdDecap       | Out-Null
+  Write-Host "$ip → Wiping CAPsMAN state..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdNukeCapsMan  | Out-Null
+  Write-Host "$ip → Disabling CAPsMAN and wiping state done" -ForegroundColor DarkGreen
+
+  Write-Host "$ip → Applying wireless configuration..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdForceWireless| Out-Null
+  Write-Host "$ip → Wireless config applied" -ForegroundColor DarkGreen
+
+  Write-Host "$ip → Configuring bridge and VLANs..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdNet          | Out-Null
+  Write-Host "$ip → Bridge and VLAN configuration applied" -ForegroundColor DarkGreen
+
+  Write-Host "$ip → Rebooting device..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdReboot       | Out-Null
   try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
+
+  Write-Host "$ip → Waiting for device to come back online..." -ForegroundColor Gray
   if (-not (Wait-ForHost $ip 300)) { return @{ssid1=''; ssid2=''; status='reboot-timeout'} }
+
+  Write-Host "$ip → Reconnecting SSH after reboot..." -ForegroundColor Gray
   $s = Reconnect-SSH $ip $Username $Password
   if ($null -eq $s) { return @{ssid1=''; ssid2=''; status='reconnect-failed'} }
+
   # verify and enforce up to 60s
+  Write-Host "$ip → Verifying wireless configuration..." -ForegroundColor Gray
   $deadline = [DateTime]::UtcNow.AddSeconds(60)
   do {
     $s1 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
@@ -198,6 +216,7 @@ function Force-Config {
   } while ([DateTime]::UtcNow -lt $deadline)
   $final1 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID1).Output -join "").Trim()
   $final2 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID2).Output -join "").Trim()
+  Write-Host "$ip → Wireless verification complete" -ForegroundColor DarkGreen
   return @{ssid1=$final1; ssid2=$final2; status='ok'; session=$s}
 }
 
@@ -256,6 +275,7 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 
     # force configuration
     $res = Force-Config $session $ip
+    Write-Host "$ip → Force-config result: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' Status='$($res.status)'" -ForegroundColor Blue
     if ($res.status -ne 'ok') {
       Write-Host "$ip → configuration incomplete: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' status=$($res.status)" -ForegroundColor Red
     }
