@@ -3,8 +3,8 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
-$StartIP        = 2        # inclusive
-$EndIP          = 253       # inclusive
+$StartIP        = 163        # inclusive
+$EndIP          = 163       # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Hotel Guest"
@@ -325,30 +325,27 @@ function Force-Config {
   # Probe DHCP on WLANs to emulate a client getting IP on VLAN $VlanId
 Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
 
-  # Pre-check: ensure SSID + radios enabled BEFORE reboot
+  # Pre-check: ensure SSID + radios enabled BEFORE reboot, forcibly apply correct SSID and VLANs and forcibly disable CAPsMAN
+  Write-Host "$ip → Forcing SSID/VLAN settings and disabling CAPsMAN before reboot..." -ForegroundColor Yellow
+  $enforceCmd = @"
+'; :do {
+  /interface wireless cap disable;
+  /interface wireless enable wlan1,wlan2;
+  /interface wireless set wlan1 ssid="Koukounaria Guest 9";
+  /interface wireless set wlan2 ssid="Koukounaria Guest 9";
+  /interface bridge port set [find interface=wlan1] pvid=10;
+  /interface bridge port set [find interface=wlan2] pvid=10;
+} on-error={:put "=== ERROR applying SSID/VLAN settings ==="}
+"@
+  $enfResult = Exec-Step -session $session -ip $ip -cmd $enforceCmd -desc 'Force-disable CAPsMAN, enable WLANs, set SSID/VLAN'
+  Start-Sleep -Seconds 3
+  # Re-read to check
   $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
   $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
   $pre_d1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
   $pre_d2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
-  $pre_ok1 = (($pre_s1 -eq $SSID -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
-  $pre_ok2 = (($pre_s2 -eq $SSID -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
-
-  if (-not ($pre_ok1 -or $pre_ok2)) {
-    Write-Host "$ip → SSID not applied yet; enforcing before reboot..." -ForegroundColor Yellow
-    $enf1 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan1] ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan1'
-    $enf2 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan1]" -desc 'Enforce enable wlan1'
-    $enf3 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set [find default-name=wlan2] ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan2'
-    $enf4 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable [find default-name=wlan2]" -desc 'Enforce enable wlan2'
-    if (-not ($enf1.ok -or $enf3.ok)) { return @{ssid1=$pre_s1; ssid2=$pre_s2; status='enforce-failed'; session=$session} }
-    Start-Sleep -Seconds 3
-    $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
-    $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
-    $pre_d1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
-    $pre_d2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
-    $pre_ok1 = (($pre_s1 -eq $SSID -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
-    $pre_ok2 = (($pre_s2 -eq $SSID -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
-  }
-
+  $pre_ok1 = (($pre_s1 -eq "Koukounaria Guest 9" -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
+  $pre_ok2 = (($pre_s2 -eq "Koukounaria Guest 9" -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
   if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host ("$ip → ERROR: SSID/VLAN not applied; wlan1='{0}' disabled={1} wlan2='{2}' disabled={3}" -f $pre_s1,$pre_d1,$pre_s2,$pre_d2) -ForegroundColor Red
     return @{ssid1=$pre_s1; ssid2=$pre_s2; status='apply-failed'; session=$session}
