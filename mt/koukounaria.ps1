@@ -91,26 +91,25 @@ function Dump-BridgeState {
   Exec-Step -session $session -ip $ip -desc 'bridge vlan print' -cmd '/interface bridge vlan print detail' -ShowOut
 }
 
-# Probe DHCP on wlan interfaces to simulate a client obtaining an IP on VLAN 10
+# Probe DHCP by attaching a temp VLAN10 interface to the bridge and probing for DHCP lease
 function Probe-DHCP-OnWlan {
-  param($session,[string]$ip,[string]$wlan,[int]$timeoutSec=20)
+  param($session,[string]$ip,[string]$bridge,[int]$timeoutSec=20)
   $status=''; $addr=''
   try {
-    # Remove any previous probe client on this interface
-    $rmTpl  = '/ip dhcp-client remove [find where interface="[IF]" comment="__probe__"]'
-    $rmCmd  = $rmTpl.Replace('[IF]',$wlan)
-    Invoke-SSHCommand -SSHSession $session -Command $rmCmd | Out-Null
+    # Clean any previous leftovers
+    Invoke-SSHCommand -SSHSession $session -Command "/ip dhcp-client remove [find where comment=\"__probe__\"]" | Out-Null
+    Invoke-SSHCommand -SSHSession $session -Command "/interface vlan remove [find where name=\"probe_vlan10\"]" | Out-Null
 
-    # Add probe DHCP client (does not alter routes/DNS)
-    $addTpl = '/ip dhcp-client add interface=[IF] add-default-route=no use-peer-dns=no use-peer-ntp=no disabled=no comment="__probe__"'
-    $addCmd = $addTpl.Replace('[IF]',$wlan)
+    # Create temp VLAN10 on the bridge
+    $vlanCmd = "/interface vlan add name=probe_vlan10 interface=$bridge vlan-id=10"
+    Invoke-SSHCommand -SSHSession $session -Command $vlanCmd | Out-Null
+
+    # Add DHCP client on probe_vlan10
+    $addCmd = "/ip dhcp-client add interface=probe_vlan10 add-default-route=no use-peer-dns=no use-peer-ntp=no disabled=no comment=\"__probe__\""
     Invoke-SSHCommand -SSHSession $session -Command $addCmd | Out-Null
 
-    # Poll status until bound or timeout
-    $stTpl  = ':local id [/ip dhcp-client find where interface="[IF]" comment="__probe__"]; :if ([:len $id]>0) do={:put [/ip dhcp-client get $id status]} else={:put "none"}'
-    $adTpl  = ':local id [/ip dhcp-client find where interface="[IF]" comment="__probe__"]; :put [/ip dhcp-client get $id address]'
-    $stCmd  = $stTpl.Replace('[IF]',$wlan)
-    $adCmd  = $adTpl.Replace('[IF]',$wlan)
+    $stCmd = ":local id [/ip dhcp-client find where interface=\"probe_vlan10\" comment=\"__probe__\"]; :if ([:len $id]>0) do={:put [/ip dhcp-client get $id status]} else={:put \"none\"}"
+    $adCmd = ":local id [/ip dhcp-client find where interface=\"probe_vlan10\" comment=\"__probe__\"]; :put [/ip dhcp-client get $id address]"
 
     $sw=[Diagnostics.Stopwatch]::StartNew()
     while($sw.Elapsed.TotalSeconds -lt $timeoutSec){
@@ -118,17 +117,18 @@ function Probe-DHCP-OnWlan {
       if($status -eq 'bound') { $addr = ((Invoke-SSHCommand -SSHSession $session -Command $adCmd).Output -join '').Trim(); break }
       Start-Sleep -Milliseconds 800
     }
-  } catch {
+  } catch { 
     $status = "error: $($_.Exception.Message)"
   } finally {
-    try { Invoke-SSHCommand -SSHSession $session -Command $rmCmd | Out-Null } catch {}
+    try { Invoke-SSHCommand -SSHSession $session -Command "/ip dhcp-client remove [find where comment=\"__probe__\"]" | Out-Null } catch {}
+    try { Invoke-SSHCommand -SSHSession $session -Command "/interface vlan remove [find where name=\"probe_vlan10\"]" | Out-Null } catch {}
   }
 
-  if($status -eq 'bound' -and $addr){ Write-Host "$ip → [DHCP-PROBE] $wlan bound $addr [OK]" -ForegroundColor Green; return $addr }
-  elseif($status -eq 'searching' -or $status -eq 'requesting'){ Write-Host "$ip → [DHCP-PROBE] $wlan $status [WARN]" -ForegroundColor Yellow; return '' }
-  elseif($status -eq 'none'){ Write-Host "$ip → [DHCP-PROBE] $wlan probe not found [WARN]" -ForegroundColor Yellow; return '' }
-  elseif($status){ Write-Host "$ip → [DHCP-PROBE] $wlan $status [FAIL]" -ForegroundColor Red; return '' }
-  else { Write-Host "$ip → [DHCP-PROBE] $wlan unknown [FAIL]" -ForegroundColor Red; return '' }
+  if($status -eq 'bound' -and $addr){ Write-Host "$ip → [DHCP-PROBE] VLAN10 bound $addr [OK]" -ForegroundColor Green; return $addr }
+  elseif($status -eq 'searching' -or $status -eq 'requesting'){ Write-Host "$ip → [DHCP-PROBE] VLAN10 $status [WARN]" -ForegroundColor Yellow; return '' }
+  elseif($status -eq 'none'){ Write-Host "$ip → [DHCP-PROBE] VLAN10 probe not found [WARN]" -ForegroundColor Yellow; return '' }
+  elseif($status){ Write-Host "$ip → [DHCP-PROBE] VLAN10 $status [FAIL]" -ForegroundColor Red; return '' }
+  else { Write-Host "$ip → [DHCP-PROBE] VLAN10 unknown [FAIL]" -ForegroundColor Red; return '' }
 }
 
 function Print-NetworkChecks {
