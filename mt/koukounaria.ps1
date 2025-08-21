@@ -108,6 +108,7 @@ $CmdNukeCapsMan = @"
 :do { /caps-man access-list remove [find] } on-error={}
 "@
 
+# (unused)
 $CmdForceWireless = @"
 # Minimal explicit apply: set SSID and enable radios (no mass disable/reset)
 /interface wireless
@@ -194,7 +195,10 @@ function Force-Config {
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdDecap        -desc 'Disabling CAPsMAN and CAP').ok) { return @{ssid1=''; ssid2=''; status='caps-disable-failed'; session=$session} }
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNukeCapsMan   -desc 'Wiping CAPsMAN state').ok)      { return @{ssid1=''; ssid2=''; status='caps-wipe-failed';   session=$session} }
-  if (-not (Exec-Step -session $session -ip $ip -cmd $CmdForceWireless -desc 'Removing & applying wireless config').ok) { return @{ssid1=''; ssid2=''; status='wlan-apply-failed'; session=$session} }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan1 ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan1').ok) { Write-Host "$ip → note: wlan1 may not exist" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan1" -desc 'Enable wlan1').ok) { Write-Host "$ip → note: enable wlan1 failed/absent" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan2 ssid=`"$SSID`" disabled=no" -desc 'Set SSID on wlan2').ok) { Write-Host "$ip → note: wlan2 may not exist" -ForegroundColor DarkYellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan2" -desc 'Enable wlan2').ok) { Write-Host "$ip → note: enable wlan2 failed/absent" -ForegroundColor DarkYellow }
   if (-not (Exec-Step -session $session -ip $ip -cmd $CmdNet           -desc 'Configuring bridge and VLANs').ok) { return @{ssid1=''; ssid2=''; status='bridge-vlan-failed'; session=$session} }
 
   # Pre-check: ensure SSID + radios enabled BEFORE reboot
@@ -207,15 +211,11 @@ function Force-Config {
 
   if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host "$ip → SSID not applied yet; enforcing before reboot..." -ForegroundColor Yellow
-    $enforceNow = @"
-/interface wireless
-:do { set wlan1 ssid="$SSID" disabled=no } on-error={}
-:do { enable wlan1 } on-error={}
-:do { set wlan2 ssid="$SSID" disabled=no } on-error={}
-:do { enable wlan2 } on-error={}
-"@
-    $enf = Exec-Step -session $session -ip $ip -cmd $enforceNow -desc 'Enforcing SSID enable on wlan1/2'
-    if (-not $enf.ok) { return @{ssid1=$pre_s1; ssid2=$pre_s2; status='enforce-failed'; session=$session} }
+    $enf1 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan1 ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan1'
+    $enf2 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan1" -desc 'Enforce enable wlan1'
+    $enf3 = Exec-Step -session $session -ip $ip -cmd "/interface wireless set wlan2 ssid=`"$SSID`" disabled=no" -desc 'Enforce SSID on wlan2'
+    $enf4 = Exec-Step -session $session -ip $ip -cmd "/interface wireless enable wlan2" -desc 'Enforce enable wlan2'
+    if (-not ($enf1.ok -or $enf3.ok)) { return @{ssid1=$pre_s1; ssid2=$pre_s2; status='enforce-failed'; session=$session} }
     Start-Sleep -Seconds 3
     $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
     $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
