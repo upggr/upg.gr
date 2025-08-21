@@ -122,10 +122,10 @@ function Print-NetworkChecks {
     $cmdDhcp = $cmdDhcpTpl.Replace('[VID]',$vlanId)
     $dhcpInfo = ((Invoke-SSHCommand -SSHSession $session -Command $cmdDhcp).Output -join '').Trim()
     if($dhcpInfo -ne 'none'){
-      if($dhcpInfo -match '^bound'){ Write-Host "$ip → [CHECK] DHCP client on mgmt.$vlanId: $dhcpInfo [OK]" -ForegroundColor Green }
-      else{ Write-Host "$ip → [CHECK] DHCP client on mgmt.$vlanId: $dhcpInfo [WARN]" -ForegroundColor Yellow }
+      if($dhcpInfo -match '^bound'){ Write-Host "$ip → [CHECK] DHCP client on mgmt.${vlanId}: $dhcpInfo [OK]" -ForegroundColor Green }
+      else{ Write-Host "$ip → [CHECK] DHCP client on mgmt.${vlanId}: $dhcpInfo [WARN]" -ForegroundColor Yellow }
     } else {
-      Write-Host "$ip → [CHECK] DHCP client on mgmt.$vlanId: none [INFO]" -ForegroundColor DarkGray
+      Write-Host "$ip → [CHECK] DHCP client on mgmt.${vlanId}: none [INFO]" -ForegroundColor DarkGray
     }
   } catch {
     Write-Host "$ip → [CHECK] error: $($_.Exception.Message)" -ForegroundColor Red
