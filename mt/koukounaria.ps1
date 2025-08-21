@@ -3,8 +3,8 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
-$StartIP        = 116        # inclusive
-$EndIP          = 117       # inclusive
+$StartIP        = 150        # inclusive
+$EndIP          = 200       # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Guest 9"
