@@ -109,21 +109,8 @@ $CmdNukeCapsMan = @"
 "@
 
 $CmdForceWireless = @"
-# Apply explicit config WITHOUT mass-disabling or resets (avoids Mikrotik defaults)
-/interface wireless security-profiles remove [find where name!="default"]
-/interface wireless security-profiles add name=guest_open authentication-types="" unicast-ciphers="" group-ciphers=""
-
+# Minimal explicit apply: set SSID and enable radios (no mass disable/reset)
 /interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={
-  set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=2ghz-b/g/n channel-width=20mhz frequency=2412 default-authentication=yes default-forwarding=yes installation=indoor antenna-gain=0 disabled=no
-  enable wlan1
-}
-:if ([:len [find where name="wlan2"]]>0) do={
-  set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open country=greece frequency-mode=regulatory-domain band=5ghz-a/n/ac channel-width=20mhz frequency=5180 default-authentication=yes default-forwarding=yes installation=indoor antenna-gain=0 disabled=no
-  enable wlan2
-}
-# Re-assert once more after a short pause in case prior state re-applies
-:delay 2
 :if ([:len [find where name="wlan1"]]>0) do={ set wlan1 ssid="$SSID" disabled=no; enable wlan1 }
 :if ([:len [find where name="wlan2"]]>0) do={ set wlan2 ssid="$SSID" disabled=no; enable wlan2 }
 "@
@@ -216,14 +203,15 @@ function Force-Config {
   $pre_ok1 = (($pre_s1 -eq $SSID -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
   $pre_ok2 = (($pre_s2 -eq $SSID -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
 
-  if (-not ($pre_ok1 -and $pre_ok2)) {
+  if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host "$ip → SSID not applied yet; enforcing before reboot..." -ForegroundColor Yellow
     $enforceNow = @"
 /interface wireless
-:if ([:len [find where name="wlan1"]]>0) do={ set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open disabled=no }
-:if ([:len [find where name="wlan2"]]>0) do={ set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open disabled=no }
+:if ([:len [find where name="wlan1"]]>0) do={ set wlan1 ssid="$SSID" disabled=no; enable wlan1 }
+:if ([:len [find where name="wlan2"]]>0) do={ set wlan2 ssid="$SSID" disabled=no; enable wlan2 }
 "@
-    Invoke-SSHCommand -SSHSession $session -Command $enforceNow | Out-Null
+    $enf = Exec-Step -session $session -ip $ip -cmd $enforceNow -desc 'Enforcing SSID enable on wlan1/2'
+    if (-not $enf.ok) { return @{ssid1=$pre_s1; ssid2=$pre_s2; status='enforce-failed'; session=$session} }
     Start-Sleep -Seconds 3
     $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
     $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
@@ -233,7 +221,7 @@ function Force-Config {
     $pre_ok2 = (($pre_s2 -eq $SSID -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
   }
 
-  if (-not ($pre_ok1 -and $pre_ok2)) {
+  if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host ("$ip → ERROR: SSID/VLAN not applied; wlan1='{0}' disabled={1} wlan2='{2}' disabled={3}" -f $pre_s1,$pre_d1,$pre_s2,$pre_d2) -ForegroundColor Red
     return @{ssid1=$pre_s1; ssid2=$pre_s2; status='apply-failed'; session=$session}
   }
