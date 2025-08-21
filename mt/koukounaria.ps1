@@ -278,6 +278,8 @@ function Force-Config {
   # Create/refresh VLAN row and enable filtering
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan add bridge=bridge1 vlan-ids=$VlanId tagged=bridge1,ether1 untagged=wlan1,wlan2" -desc 'add VLAN row (10)').ok) { Write-Host "$ip → VLAN add may already exist; trying set" -ForegroundColor Yellow; Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan set [find where bridge=bridge1 vlan-ids=$VlanId] tagged=bridge1,ether1 untagged=wlan1,wlan2" -desc 'set VLAN row (10)' | Out-Null }
   if (-not (Exec-Step -session $session -ip $ip -cmd '/interface bridge set [find where name=bridge1] vlan-filtering=yes' -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
+  # Ensure VLAN 1 does not carry untagged ether1 on the bridge (keep trunk clean)
+  Exec-Step -session $session -ip $ip -cmd '/interface bridge vlan set [find where bridge=bridge1 vlan-ids=1] tagged=bridge1,ether1 untagged=' -desc 'fix VLAN1 (untagged empty)' | Out-Null
 
   # --- POST state dump ---
   Dump-BridgeState -session $session -ip $ip -label 'POST'
