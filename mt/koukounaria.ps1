@@ -3,8 +3,8 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
-$StartIP        = 2        # inclusive
-$EndIP          = 253       # inclusive
+$StartIP        = 108        # inclusive
+$EndIP          = 110       # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Hotel Guest"
@@ -284,6 +284,9 @@ function Force-Config {
   param($session,[string]$ip)
   Write-Host "$ip → Starting forced configuration..." -ForegroundColor Magenta
   if ($null -eq $session) { return @{ssid1=''; ssid2=''; status='forced-no-session'} }
+  # Immediately and explicitly disable CAP mode and CAPsMAN manager before any SSID or bridge/VLAN operations
+  Exec-Step -session $session -ip $ip -cmd '/interface wireless cap set enabled=no' -desc 'Disable CAP mode' | Out-Null
+  Exec-Step -session $session -ip $ip -cmd '/caps-man manager set enabled=no' -desc 'Disable CAPsMAN manager' | Out-Null
   # Discovery feedback: CAP mode and wireless count
   $capState0 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdCapOn).Output -join '').Trim()
   $capMsg0 = if ($capState0 -eq 'true') { 'ON' } else { 'OFF' }
