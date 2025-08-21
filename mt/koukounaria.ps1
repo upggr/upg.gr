@@ -67,8 +67,8 @@ $CmdDis2     = ':put [/interface wireless get wlan2 disabled]'
 # ---- FORCE-config blocks (always apply) ----
 $CmdDecap = @"
 /interface wireless cap set enabled=no interfaces="" discovery-interfaces="" caps-man-addresses="" certificate="" static-virtual=no
-:if ([:len [/system package find where name="caps-man"]]>0) do={/system package disable caps-man}
-:do { /caps-man manager set enabled=no } on-error={}
+:if ([:len [/system package find where name="caps-man"]]>0) do={/system package uninstall caps-man}
+/system reboot
 "@
 
 $CmdNukeCapsMan = @"
@@ -166,6 +166,7 @@ function Force-Config {
   # remove CAP/caps-man, wipe wifi, bridge/trunk VLAN, reboot, verify loop
   Write-Host "$ip → Disabling CAPsMAN and CAP..." -ForegroundColor Gray
   Invoke-SSHCommand -SSHSession $session -Command $CmdDecap       | Out-Null
+  Invoke-SSHCommand -SSHSession $session -Command '/system package uninstall caps-man' | Out-Null
   Write-Host "$ip → CAPsMAN and CAP disabled" -ForegroundColor Green
 
   Write-Host "$ip → Wiping CAPsMAN state..." -ForegroundColor Gray
@@ -220,6 +221,12 @@ function Force-Config {
   $final1 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID1).Output -join "").Trim()
   $final2 = ((Invoke-SSHCommand -SSHSession $s -Command $CmdSSID2).Output -join "").Trim()
   Write-Host "$ip → Wireless verification complete" -ForegroundColor DarkGreen
+  # Check if interfaces are still managed by CAPsMAN
+  $mgmt1 = (Invoke-SSHCommand -SSHSession $s -Command ':put [/interface wireless get wlan1 running]') -join ""
+  $caps1 = (Invoke-SSHCommand -SSHSession $s -Command ':put [/interface wireless get wlan1 configuration]') -join ""
+  if ($mgmt1 -match "false" -and $caps1 -match "capsman") {
+    Write-Host "$ip → ERROR: wlan1 still under CAPsMAN management!" -ForegroundColor Red
+  }
   return @{ssid1=$final1; ssid2=$final2; status='ok'; session=$s}
 }
 
