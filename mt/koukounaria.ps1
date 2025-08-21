@@ -186,8 +186,39 @@ function Force-Config {
   Invoke-SSHCommand -SSHSession $session -Command $CmdNet          | Out-Null
   Write-Host "$ip → Bridge and VLAN configuration applied" -ForegroundColor Green
 
+  # Pre-check: ensure SSID + radios enabled BEFORE reboot
+  $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
+  $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
+  $pre_d1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
+  $pre_d2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
+  $pre_ok1 = (($pre_s1 -eq $SSID -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
+  $pre_ok2 = (($pre_s2 -eq $SSID -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
+
+  if (-not ($pre_ok1 -and $pre_ok2)) {
+    Write-Host "$ip → SSID not applied yet; enforcing before reboot..." -ForegroundColor Yellow
+    $enforceNow = @"
+/interface wireless
+:if ([:len [find where name="wlan1"]]>0) do={ set wlan1 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no }
+:if ([:len [find where name="wlan2"]]>0) do={ set wlan2 mode=ap-bridge ssid="$SSID" security-profile=guest_open vlan-mode=use-tag vlan-id=$VlanId disabled=no }
+"@
+    Invoke-SSHCommand -SSHSession $session -Command $enforceNow | Out-Null
+    Start-Sleep -Seconds 3
+    $pre_s1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID1 -TimeOut 3000).Output -join "").Trim()
+    $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
+    $pre_d1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
+    $pre_d2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
+    $pre_ok1 = (($pre_s1 -eq $SSID -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
+    $pre_ok2 = (($pre_s2 -eq $SSID -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
+  }
+
+  if (-not ($pre_ok1 -and $pre_ok2)) {
+    Write-Host "$ip → ERROR: SSID/VLAN not applied; skipping reboot" -ForegroundColor Red
+    return @{ssid1=$pre_s1; ssid2=$pre_s2; status='apply-failed'; session=$session}
+  }
+
+  # All good → reboot now
   Write-Host "$ip → Rebooting device..." -ForegroundColor Gray
-  Invoke-SSHCommand -SSHSession $session -Command $CmdReboot       | Out-Null
+  Invoke-SSHCommand -SSHSession $session -Command $CmdReboot | Out-Null
   Write-Host "$ip → Reboot command issued" -ForegroundColor Green
   try { Remove-SSHSession -SSHSession $session | Out-Null } catch {}
 
