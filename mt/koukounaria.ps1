@@ -3,8 +3,8 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
-$StartIP        = 2       # inclusive
-$EndIP          = 253      # inclusive
+$StartIP        = 101       # inclusive
+$EndIP          = 101      # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Hotel Guest"
@@ -388,13 +388,19 @@ function Force-Config {
 /interface bridge vlan
 :do { remove [find where bridge=bridge1 vlan-ids=$VlanId] } on-error={}
 
+# On the target bridge, purge any wrong VLAN rows (anything not equal to $VlanId)
+:foreach v in=[find where bridge=$BridgeName] do={
+  :local vid [/interface bridge vlan get $v vlan-ids];
+  :if ([:tostr $vid] != "$VlanId") do={ remove $v }
+}
+
 # Build tagged/untagged lists for the target bridge
 :local tagged "$BridgeName,ether1";
 :local untagged "";
 :if ([:len [/interface wireless find where name="wlan1"]]>0) do={ :set untagged "wlan1" }
 :if ([:len [/interface wireless find where name="wlan2"]]>0) do={ :set untagged ([:len $untagged]>0 ? "$untagged,wlan2" : "wlan2") }
 
-# Recreate VLAN row fresh on target bridge
+# Recreate VLAN row fresh on target bridge (guarantee vlan-ids=$VlanId)
 :do { remove [find where bridge=$BridgeName vlan-ids=$VlanId] } on-error={}
 :add bridge=$BridgeName vlan-ids=$VlanId tagged=$tagged untagged=$untagged
 "@
