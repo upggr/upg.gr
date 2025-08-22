@@ -290,29 +290,30 @@ function Force-Config {
   Exec-Step -session $session -ip $ip -cmd '/caps-man manager set enabled=no' -desc 'Disable CAPsMAN manager' | Out-Null
   # --- CLEANUP FIRST: remove unknown/virtual WLANs and non-target bridges ---
   $cleanupCmd = @"
-  # Remove virtual/unknown WLANs
-  :do { /interface wireless remove [find where master-interface!="" ] } on-error={}
-  :do { /interface wireless remove [find where type=virtual ] } on-error={}
-  :do { /interface wireless remove [find where name~"wlan" and name!"wlan1" and name!"wlan2"] } on-error={}
-  
-  # Tear down & DELETE every bridge EXCEPT bridge1 and the target
-  :local keep1 "bridge1";
-  :local keep2 "$BridgeName";
-  :foreach b in=[/interface bridge find] do={
-    :local bn [/interface bridge get $b name];
-    :if (($bn != $keep1) && ($bn != $keep2)) do={
-      /ip hotspot     remove [find where interface=$bn];
-      /ip dhcp-server remove [find where interface=$bn];
-      /ip dhcp-relay  remove [find where interface=$bn];
-      /ip address     remove [find where interface=$bn];
-      /interface bridge port remove [find where bridge=$bn];
-      /interface bridge vlan remove [find where bridge=$bn];
-      /interface bridge remove [find where name=$bn];
-    }
+# Remove virtual/unknown WLANs
+:do { /interface wireless remove [find where master-interface!="" ] } on-error={}
+:do { /interface wireless remove [find where type=virtual ] } on-error={}
+:do { /interface wireless remove [find where name~"wlan" and name!"wlan1" and name!"wlan2"] } on-error={}
+
+# Tear down & DELETE every bridge EXCEPT bridge1 and the target
+:local keep1 "bridge1";
+:local keep2 "$BridgeName";
+:foreach b in=[/interface bridge find] do={
+  :local bn [/interface bridge get $b name];
+  :if (($bn != $keep1) && ($bn != $keep2)) do={
+    /ip hotspot     remove [find where interface=$bn];
+    /ip dhcp-server remove [find where interface=$bn];
+    /ip dhcp-relay  remove [find where interface=$bn];
+    /ip address     remove [find where interface=$bn];
+    /interface bridge port remove [find where bridge=$bn];
+    /interface bridge vlan remove [find where bridge=$bn];
+    /interface bridge disable [find where name=$bn];
+    /interface bridge remove  [find where name=$bn];
   }
-  
-  # Ensure target bridge exists
-  :if ([:len [/interface bridge find where name="$BridgeName"]]=0) do={ /interface bridge add name=$BridgeName }
+}
+
+# Ensure target bridge exists
+:if ([:len [/interface bridge find where name="$BridgeName"]]=0) do={ /interface bridge add name=$BridgeName }
 "@
   Exec-Step -session $session -ip $ip -cmd $cleanupCmd -desc 'cleanup wlans/bridges' | Out-Null
   # Discovery feedback: CAP mode and wireless count
@@ -340,10 +341,14 @@ function Force-Config {
 
   # 2. Add all ethernet interfaces to the target bridge (idempotent)
   $addEthToBridgeCmd = @"
-  :do { /interface bridge port remove [find where interface=ether1 and bridge!"$BridgeName"] } on-error={}
-  :if ([:len [/interface bridge port find where bridge=$BridgeName interface=ether1]]=0) do={
-    /interface bridge port add bridge=$BridgeName interface=ether1
+/interface bridge port
+:foreach e in=[/interface ethernet find] do={
+  :local en [/interface ethernet get $e name];
+  :do { remove [find where interface=$en and bridge!"$BridgeName"] } on-error={};
+  :if ([:len [find where bridge=$BridgeName interface=$en]]=0) do={
+    add bridge=$BridgeName interface=$en
   }
+}
 "@
   if (-not (Exec-Step -session $session -ip $ip -cmd $addEthToBridgeCmd -desc 'ensure all ethernet ports in bridge1').ok) { Write-Host "$ip → note: failed to add all ethernet ports to bridge1" -ForegroundColor Yellow }
 
@@ -364,26 +369,32 @@ function Force-Config {
 
   # 4. VLAN row for $VlanId: $BridgeName,ether1 tagged; wlan1,wlan2 untagged (remove+add to guarantee fresh)
   $vlanRowCmd = @"
-  :local tagged "$BridgeName,ether1"
-  :local untagged ""
-  :if ([:len [/interface wireless find where name="wlan1"]]>0) do={ :set untagged "wlan1" }
-  :if ([:len [/interface wireless find where name="wlan2"]]>0) do={
-    :if ([:len \$untagged]>0) do={ :set untagged "\$untagged,wlan2" } else={ :set untagged "wlan2" }
-  }
-  /interface bridge vlan
-  :do { remove [find where bridge=$BridgeName vlan-ids=$VlanId] } on-error={}
-  add bridge=$BridgeName vlan-ids=$VlanId tagged=\$tagged untagged=\$untagged
+# Remove wrong placement of VLAN 10 on bridge1 (if any)
+/interface bridge vlan
+:do { remove [find where bridge=bridge1 vlan-ids=$VlanId] } on-error={};
+
+# Build tagged/untagged lists for the target bridge
+:local tagged "$BridgeName,ether1";
+:local untagged "";
+:if ([:len [/interface wireless find where name="wlan1"]]>0) do={ :set untagged "wlan1" }
+:if ([:len [/interface wireless find where name="wlan2"]]>0) do={
+  :if ([:len $untagged]>0) do={ :set untagged "$untagged,wlan2" } else={ :set untagged "wlan2" }
+}
+# Recreate VLAN 10 row fresh on target bridge
+:do { remove [find where bridge=$BridgeName vlan-ids=$VlanId] } on-error={};
+add bridge=$BridgeName vlan-ids=$VlanId tagged=$tagged untagged=$untagged
 "@
   if (-not (Exec-Step -session $session -ip $ip -cmd $vlanRowCmd -desc 'ensure VLAN row for VLAN').ok) { Write-Host "$ip → VLAN row add/set failed" -ForegroundColor Yellow }
 
   # 5. VLAN1 fix: remove ether1 from untagged
-  $fixVlan1Cmd = "/interface bridge vlan set [find where bridge=$BridgeName vlan-ids=1] tagged=$BridgeName,ether1 untagged="
+  Exec-Step -session $session -ip $ip -cmd ':if ([:len [/interface bridge vlan find where bridge=bridge1 vlan-ids=1]]=0) do={/interface bridge vlan add bridge=bridge1 vlan-ids=1 tagged=bridge1,ether1 untagged=}' -desc 'ensure VLAN1 row on bridge1' | Out-Null
+  $fixVlan1Cmd = "/interface bridge vlan set [find where bridge=bridge1 vlan-ids=1] tagged=bridge1,ether1 untagged="
   Exec-Step -session $session -ip $ip -cmd $fixVlan1Cmd -desc 'fix VLAN1 (untagged empty)' | Out-Null
 
   # 6. Enable VLAN filtering on the target bridge
   if (-not (Exec-Step -session $session -ip $ip -cmd "/interface bridge set [find where name=$BridgeName] vlan-filtering=yes" -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
   # Re-apply VLAN1 fix post-enable (v6 sometimes reverts it when enabling filtering)
-  Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan set [find where bridge=$BridgeName vlan-ids=1] tagged=$BridgeName,ether1 untagged=" -desc 'fix VLAN1 again (post-enable)' | Out-Null
+  Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan set [find where bridge=bridge1 vlan-ids=1] tagged=bridge1,ether1 untagged=" -desc 'fix VLAN1 again (post-enable)' | Out-Null
 
   # 6.5 Ensure management VLAN interface and DHCP client on mgmt.$VlanId
   $mgmtCmd = @"
