@@ -295,16 +295,20 @@ function Force-Config {
   :do { /interface wireless remove [find where type=virtual ] } on-error={}
   :do { /interface wireless remove [find where name~"wlan" and name!"wlan1" and name!"wlan2"] } on-error={}
   
-  # Tear down & DELETE every bridge EXCEPT the target ($BridgeName)
-  :foreach b in=[/interface bridge find where name!"$BridgeName"] do={
+  # Tear down & DELETE every bridge EXCEPT bridge1 and the target
+  :local keep1 "bridge1";
+  :local keep2 "$BridgeName";
+  :foreach b in=[/interface bridge find] do={
     :local bn [/interface bridge get $b name];
-    /ip dhcp-server remove [find where interface=$bn];
-    /ip dhcp-relay  remove [find where interface=$bn];
-    /ip hotspot     remove [find where interface=$bn];
-    /ip address     remove [find where interface=$bn];
-    /interface bridge port remove [find where bridge=$bn];
-    /interface bridge vlan remove [find where bridge=$bn];
-    /interface bridge remove [find where name=$bn];
+    :if (($bn != $keep1) && ($bn != $keep2)) do={
+      /ip hotspot     remove [find where interface=$bn];
+      /ip dhcp-server remove [find where interface=$bn];
+      /ip dhcp-relay  remove [find where interface=$bn];
+      /ip address     remove [find where interface=$bn];
+      /interface bridge port remove [find where bridge=$bn];
+      /interface bridge vlan remove [find where bridge=$bn];
+      /interface bridge remove [find where name=$bn];
+    }
   }
   
   # Ensure target bridge exists
