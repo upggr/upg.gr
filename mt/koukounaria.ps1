@@ -3,8 +3,8 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
-$StartIP        = 2       # inclusive
-$EndIP          = 253      # inclusive
+$StartIP        = 101       # inclusive
+$EndIP          = 101      # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Hotel Guest"
@@ -350,8 +350,8 @@ Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
   $pre_s2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdSSID2 -TimeOut 3000).Output -join "").Trim()
   $pre_d1 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis1  -TimeOut 3000).Output -join "").Trim()
   $pre_d2 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdDis2  -TimeOut 3000).Output -join "").Trim()
-  $pre_ok1 = (($pre_s1 -eq $ssid -and $pre_d1 -eq 'false') -or ($pre_s1 -eq '' -and $pre_d1 -eq 'true'))
-  $pre_ok2 = (($pre_s2 -eq $ssid -and $pre_d2 -eq 'false') -or ($pre_s2 -eq '' -and $pre_d2 -eq 'true'))
+  $pre_ok1 = (($pre_s1 -eq $ssid1 -and $pre_d1 -eq 'false'))
+  $pre_ok2 = (($pre_s2 -eq $ssid2 -and $pre_d2 -eq 'false'))
   if (-not ($pre_ok1 -or $pre_ok2)) {
     Write-Host ("$ip → ERROR: SSID/VLAN not applied; wlan1='{0}' disabled={1} wlan2='{2}' disabled={3}" -f $pre_s1,$pre_d1,$pre_s2,$pre_d2) -ForegroundColor Red
     return @{ssid1=$pre_s1; ssid2=$pre_s2; status='apply-failed'; session=$session}
