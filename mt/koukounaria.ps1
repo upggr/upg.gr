@@ -458,6 +458,20 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 "@
     Exec-Step -session $session -ip $ip -cmd $removeVirtuals -desc "Remove virtual wireless interfaces"
 
+    # Remove any bridge that is not 'bridge1'
+    $extraBridges = (Invoke-SSHCommand -SSHSession $session -Command "/interface bridge print without-paging").Output `
+        | Where-Object { $_ -match "name=" -and $_ -notmatch "bridge1" }
+    foreach ($b in $extraBridges) {
+        $bname = ($b -split "name=")[1] -split " ")[0]
+        Invoke-SSHCommand -SSHSession $session -Command "/interface bridge remove [find name=$bname]" | Out-Null
+    }
+
+    # Ensure wlan interfaces are only in bridge1
+    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port remove [find interface=wlan1]" | Out-Null
+    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port remove [find interface=wlan2]" | Out-Null
+    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port add interface=wlan1 bridge=bridge1" | Out-Null
+    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port add interface=wlan2 bridge=bridge1" | Out-Null
+
     # force configuration first
     $res = Force-Config $session $ip
     Write-Host "$ip → Force-config result: SSID1='$($res.ssid1)' SSID2='$($res.ssid2)' Status='$($res.status)'" -ForegroundColor Cyan
