@@ -311,6 +311,18 @@ function Force-Config {
   }
 }
 
+# Explicitly remove default bridge1 if it exists and isn't our target
+:if (("$BridgeName" != "bridge1") && ([:len [/interface bridge find where name="bridge1"]]>0)) do={
+  /ip hotspot     remove [find where interface=bridge1];
+  /ip dhcp-server remove [find where interface=bridge1];
+  /ip dhcp-relay  remove [find where interface=bridge1];
+  /ip address     remove [find where interface=bridge1];
+  /interface bridge port remove [find where bridge=bridge1];
+  /interface bridge vlan remove [find where bridge=bridge1];
+  :do { /interface bridge disable [find where name=bridge1] } on-error={};
+  :do { /interface bridge remove  [find where name=bridge1] } on-error={};
+}
+
 # Remove VLAN rows from any non-target bridge
 :foreach v in=[/interface bridge vlan find] do={
   :local vb [/interface bridge vlan get $v bridge];
