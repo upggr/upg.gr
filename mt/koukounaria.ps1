@@ -287,6 +287,24 @@ function Force-Config {
   # Immediately and explicitly disable CAP mode and CAPsMAN manager before any SSID or bridge/VLAN operations
   Exec-Step -session $session -ip $ip -cmd '/interface wireless cap set enabled=no' -desc 'Disable CAP mode' | Out-Null
   Exec-Step -session $session -ip $ip -cmd '/caps-man manager set enabled=no' -desc 'Disable CAPsMAN manager' | Out-Null
+  # --- CLEANUP FIRST: remove unknown/virtual WLANs and non-bridge1 bridges ---
+  $cleanupCmd = @"
+# Remove virtual/unknown WLANs
+:do { /interface wireless remove [find where type=virtual] } on-error={}
+:do { /interface wireless remove [find where name~\"wlan\" and name!\"wlan1\" and name!\"wlan2\"] } on-error={}
+
+# Remove any bridges except bridge1 (safely: ports -> vlan rows -> bridge)
+:foreach b in=[/interface bridge find where name!\"bridge1\"] do={
+  :local bn [/interface bridge get $b name];
+  /interface bridge port remove [find where bridge=$bn];
+  /interface bridge vlan remove [find where bridge=$bn];
+  /interface bridge remove [find where name=$bn];
+}
+
+# Ensure bridge1 exists
+:if ([:len [/interface bridge find where name=\"bridge1\"]]=0) do={ /interface bridge add name=bridge1 }
+"@
+  Exec-Step -session $session -ip $ip -cmd $cleanupCmd -desc 'cleanup wlans/bridges' | Out-Null
   # Discovery feedback: CAP mode and wireless count
   $capState0 = ((Invoke-SSHCommand -SSHSession $session -Command $CmdCapOn).Output -join '').Trim()
   $capMsg0 = if ($capState0 -eq 'true') { 'ON' } else { 'OFF' }
@@ -307,9 +325,6 @@ function Force-Config {
   Dump-BridgeState -session $session -ip $ip -label 'PRE'
 
   # --- Consolidated Bridge/VLAN configuration ---
-  # 0. Remove any extra bridges except bridge1
-  $removeExtraBridges = '/interface bridge remove [find where name!="bridge1"]'
-  Exec-Step -session $session -ip $ip -cmd $removeExtraBridges -desc 'remove extra bridges' | Out-Null
   # 1. Ensure bridge1 exists
   if (-not (Exec-Step -session $session -ip $ip -cmd ':do { /interface bridge add name=bridge1 } on-error={}' -desc 'ensure bridge1').ok) { return @{ssid1=''; ssid2=''; status='bridge-add-failed'; session=$session} }
 
@@ -358,6 +373,17 @@ add bridge=bridge1 vlan-ids=$VlanId tagged=\$tagged untagged=\$untagged
 
   # 6. Enable VLAN filtering on bridge1
   if (-not (Exec-Step -session $session -ip $ip -cmd '/interface bridge set [find where name=bridge1] vlan-filtering=yes' -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
+
+  # 6.5 Ensure management VLAN interface and DHCP client on mgmt.$VlanId
+  $mgmtCmd = @"
+/interface vlan
+:do { remove [find where name=\"mgmt.$VlanId\"] } on-error={}
+:add name=\"mgmt.$VlanId\" interface=bridge1 vlan-id=$VlanId
+/ip dhcp-client
+:do { remove [find] } on-error={}
+:add interface=\"mgmt.$VlanId\" add-default-route=no use-peer-dns=no use-peer-ntp=no disabled=no
+"@
+  Exec-Step -session $session -ip $ip -cmd $mgmtCmd -desc 'ensure mgmt VLAN interface and DHCP client' | Out-Null
 
   # --- POST state dump ---
   Dump-BridgeState -session $session -ip $ip -label 'POST'
