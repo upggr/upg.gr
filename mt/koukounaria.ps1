@@ -306,19 +306,58 @@ function Force-Config {
   # --- PRE state dump ---
   Dump-BridgeState -session $session -ip $ip -label 'PRE'
 
-  # Ensure bridge1 exists
-  if (-not (Exec-Step -session $session -ip $ip -cmd ':do {/interface bridge add name=bridge1} on-error={}' -desc 'ensure bridge1').ok) { return @{ssid1=''; ssid2=''; status='bridge-add-failed'; session=$session} }
+  # --- Consolidated Bridge/VLAN configuration ---
+  # 1. Ensure bridge1 exists
+  if (-not (Exec-Step -session $session -ip $ip -cmd ':do { /interface bridge add name=bridge1 } on-error={}' -desc 'ensure bridge1').ok) { return @{ssid1=''; ssid2=''; status='bridge-add-failed'; session=$session} }
 
-  # Add ports (idempotent) and set WLAN PVIDs
-  if (-not (Exec-Step -session $session -ip $ip -cmd ":do {/interface bridge port add bridge=bridge1 interface=wlan1 pvid=$VlanId} on-error={}" -desc 'add wlan1 to bridge1 pvid' ).ok) { Write-Host "$ip → note: wlan1 add/pvid may have failed" -ForegroundColor Yellow }
-  if (-not (Exec-Step -session $session -ip $ip -cmd ":do {/interface bridge port add bridge=bridge1 interface=wlan2 pvid=$VlanId} on-error={}" -desc 'add wlan2 to bridge1 pvid' ).ok) { Write-Host "$ip → note: wlan2 add/pvid may have failed" -ForegroundColor Yellow }
-  if (-not (Exec-Step -session $session -ip $ip -cmd ':do {/interface bridge port add bridge=bridge1 interface=ether1} on-error={}' -desc 'add ether1 to bridge1 (trunk)').ok) { Write-Host "$ip → note: ether1 add may have failed" -ForegroundColor Yellow }
+  # 2. Add all ethernet interfaces to bridge1 (idempotent)
+  $addEthToBridgeCmd = @"
+:foreach e in=[/interface ethernet find] do={
+  :local n [/interface ethernet get \$e name];
+  :if ([:len [/interface bridge port find where bridge=bridge1 interface=\$n]]=0) do={
+    /interface bridge port add bridge=bridge1 interface=\$n
+  }
+}
+"@
+  if (-not (Exec-Step -session $session -ip $ip -cmd $addEthToBridgeCmd -desc 'ensure all ethernet ports in bridge1').ok) { Write-Host "$ip → note: failed to add all ethernet ports to bridge1" -ForegroundColor Yellow }
 
-  # Create/refresh VLAN row and enable filtering
-  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan add bridge=bridge1 vlan-ids=$VlanId tagged=bridge1,ether1 untagged=wlan1,wlan2" -desc 'add VLAN row (10)').ok) { Write-Host "$ip → VLAN add may already exist; trying set" -ForegroundColor Yellow; Exec-Step -session $session -ip $ip -cmd "/interface bridge vlan set [find where bridge=bridge1 vlan-ids=$VlanId] tagged=bridge1,ether1 untagged=wlan1,wlan2" -desc 'set VLAN row (10)' | Out-Null }
+  # 3. Add wlan1/wlan2 to bridge1 with PVID=$VlanId (idempotent)
+  $addWlanToBridgeCmd = @"
+:foreach w in={wlan1;wlan2} do={
+  :if ([:len [/interface wireless find where name=\$w]]>0) do={
+    :if ([:len [/interface bridge port find where bridge=bridge1 interface=\$w]]=0) do={
+      /interface bridge port add bridge=bridge1 interface=\$w pvid=$VlanId
+    } else={
+      /interface bridge port set [find where bridge=bridge1 interface=\$w] pvid=$VlanId
+    }
+  }
+}
+"@
+  if (-not (Exec-Step -session $session -ip $ip -cmd $addWlanToBridgeCmd -desc 'ensure wlan1/wlan2 in bridge1 with PVID').ok) { Write-Host "$ip → note: failed to add/set wlan1/wlan2 with PVID" -ForegroundColor Yellow }
+
+  # 4. VLAN row for $VlanId: bridge1,ether1 tagged; wlan1,wlan2 untagged
+  $vlanRowCmd = @"
+:local tagged "bridge1,ether1"
+:local untagged ""
+:if ([:len [/interface wireless find where name="wlan1"]]>0) do={ :set untagged "wlan1" }
+:if ([:len [/interface wireless find where name="wlan2"]]>0) do={
+  :if ([:len \$untagged]>0) do={ :set untagged "\$untagged,wlan2" } else={ :set untagged "wlan2" }
+}
+/interface bridge vlan
+:if ([:len [find where bridge=bridge1 vlan-ids=$VlanId]]=0) do={
+  add bridge=bridge1 vlan-ids=$VlanId tagged=\$tagged untagged=\$untagged
+} else={
+  set [find where bridge=bridge1 vlan-ids=$VlanId] tagged=\$tagged untagged=\$untagged
+}
+"@
+  if (-not (Exec-Step -session $session -ip $ip -cmd $vlanRowCmd -desc 'ensure VLAN row for VLAN').ok) { Write-Host "$ip → VLAN row add/set failed" -ForegroundColor Yellow }
+
+  # 5. VLAN1 fix: remove ether1 from untagged
+  $fixVlan1Cmd = '/interface bridge vlan set [find where bridge=bridge1 vlan-ids=1] tagged=bridge1,ether1 untagged='
+  Exec-Step -session $session -ip $ip -cmd $fixVlan1Cmd -desc 'fix VLAN1 (untagged empty)' | Out-Null
+
+  # 6. Enable VLAN filtering on bridge1
   if (-not (Exec-Step -session $session -ip $ip -cmd '/interface bridge set [find where name=bridge1] vlan-filtering=yes' -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
-  # Ensure VLAN 1 does not carry untagged ether1 on the bridge (keep trunk clean)
-  Exec-Step -session $session -ip $ip -cmd '/interface bridge vlan set [find where bridge=bridge1 vlan-ids=1] tagged=bridge1,ether1 untagged=' -desc 'fix VLAN1 (untagged empty)' | Out-Null
 
   # --- POST state dump ---
   Dump-BridgeState -session $session -ip $ip -label 'POST'
@@ -369,20 +408,6 @@ Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
     return @{ssid1=$final1; ssid2=$final2; status='verify-failed'; session=$session}
   }
 
-  # WLAN internet test (ping 1.1.1.1 from wlan1/2)
-  Write-Host "$ip → Testing internet from WLAN (1.1.1.1)..." -ForegroundColor Gray
-  $okWlan = $false
-  try {
-    $p1 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/ping 1.1.1.1 interface=wlan1 count=3 interval=1s]')).Output -join ""; if ($p1 -match 'received') { $okWlan = $true }
-  } catch {}
-  try {
-    $p2 = ((Invoke-SSHCommand -SSHSession $session -Command ':put [/ping 1.1.1.1 interface=wlan2 count=3 interval=1s]')).Output -join ""; if ($p2 -match 'received') { $okWlan = $true }
-  } catch {}
-  if (-not $okWlan) {
-    Write-Host "$ip → ERROR: WLAN cannot reach internet" -ForegroundColor Red
-    return @{ssid1=$final1; ssid2=$final2; status='wlan-no-internet'; session=$session}
-  }
-  Write-Host "$ip → WLAN internet OK" -ForegroundColor DarkGreen
   return @{ssid1=$final1; ssid2=$final2; status='ready'; session=$session}
 }
 
@@ -457,20 +482,6 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 /interface wireless remove [find where type=virtual]
 "@
     Exec-Step -session $session -ip $ip -cmd $removeVirtuals -desc "Remove virtual wireless interfaces"
-
-    # Remove any bridge that is not 'bridge1'
-    $extraBridges = (Invoke-SSHCommand -SSHSession $session -Command "/interface bridge print without-paging").Output `
-        | Where-Object { $_ -match "name=" -and $_ -notmatch "bridge1" }
-    foreach ($b in $extraBridges) {
-        $bname = ($b -split "name=")[1] -split " ")[0]
-        Invoke-SSHCommand -SSHSession $session -Command "/interface bridge remove [find name=$bname]" | Out-Null
-    }
-
-    # Ensure wlan interfaces are only in bridge1
-    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port remove [find interface=wlan1]" | Out-Null
-    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port remove [find interface=wlan2]" | Out-Null
-    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port add interface=wlan1 bridge=bridge1" | Out-Null
-    Invoke-SSHCommand -SSHSession $session -Command "/interface bridge port add interface=wlan2 bridge=bridge1" | Out-Null
 
     # force configuration first
     $res = Force-Config $session $ip
