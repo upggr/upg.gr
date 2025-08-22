@@ -370,20 +370,33 @@ function Force-Config {
 "@
   if (-not (Exec-Step -session $session -ip $ip -cmd $addWlanToBridgeCmd -desc 'ensure wlan1/wlan2 in bridge1 with PVID').ok) { Write-Host "$ip → note: failed to add/set wlan1/wlan2 with PVID" -ForegroundColor Yellow }
 
-  # 4. VLAN table: VLAN 1 native (untagged), VLAN $VlanId for SSIDs (untagged on WLANs, tagged to ether1)
+  # 4. VLAN table: VLAN 1 native (untagged to bridge+ether1),
+  #    VLAN $VlanId for SSIDs (untagged on WLANs, tagged to bridge+ether1)
   $vlanRowCmd = @"
-# Work only on target bridge ($BridgeName)
+# Resolve bridge ID from name to avoid 'ambiguous value of bridge'
+:local brId [/interface bridge find where name=`"$BridgeName`"]
+
 /interface bridge vlan
-# Reset rows on target bridge
-:foreach v in=[find where bridge=$BridgeName] do={ remove $v }
-# VLAN 1 native (AP mgmt via firewall on untagged VLAN1)
-:add bridge=$BridgeName vlan-ids=1 untagged=$BridgeName,ether1
-# VLAN $VlanId for SSIDs: untagged on WLANs, tagged to trunk
-:local untagged "";
-:if ([:len [/interface wireless find where name="wlan1"]]>0) do={ :set untagged "wlan1" }
-:if ([:len [/interface wireless find where name="wlan2"]]>0) do={ :set untagged ([:len $untagged]>0 ? "$untagged,wlan2" : "wlan2") }
-:local tagged "$BridgeName,ether1";
-:add bridge=$BridgeName vlan-ids=$VlanId tagged=$tagged untagged=$untagged
+# Remove all rows for this bridge so we start clean
+:foreach v in=[find where bridge=$brId] do={ remove $v }
+
+# VLAN 1 native (firewall DHCP on untagged VLAN1)
+:add bridge=$brId vlan-ids=1 untagged=$BridgeName,ether1
+
+# Build untagged list from wlan ports if present
+:local untag "";
+:if ([:len [/interface wireless find where name=`"wlan1`"]]>0) do={ :set untag "wlan1" }
+:if ([:len [/interface wireless find where name=`"wlan2`"]]>0) do={ :set untag ([:len $untag]>0 ? "$untag,wlan2" : "wlan2") }
+
+# Always add VLAN $VlanId row
+:local tag "$BridgeName,ether1";
+:if ([:len $untag]>0) do={
+  /interface bridge vlan add bridge=$brId vlan-ids=$VlanId tagged=$tag untagged=$untag
+} else={
+  /interface bridge vlan add bridge=$brId vlan-ids=$VlanId tagged=$tag
+}
+
+/interface bridge vlan print detail where bridge=$brId
 "@
   if (-not (Exec-Step -session $session -ip $ip -cmd $vlanRowCmd -desc 'ensure VLAN row for VLAN').ok) { Write-Host "$ip → VLAN row add/set failed" -ForegroundColor Yellow }
 
