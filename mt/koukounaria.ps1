@@ -3,8 +3,8 @@ Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
 $BaseNet        = "192.168.208."
-$StartIP        = 100      # inclusive
-$EndIP          = 101      # inclusive
+$StartIP        = 174      # inclusive
+$EndIP          = 174      # inclusive
 $Username       = "admin"
 $Password       = "is3rupgr.1821##"   # will be set if device has no password
 $SSID           = "Koukounaria Hotel Guest"
@@ -131,8 +131,8 @@ function Print-NetworkChecks {
     $bf = ((Invoke-SSHCommand -SSHSession $session -Command (":put [/interface bridge get $br vlan-filtering]")).Output -join '').Trim()
     Write-Host "$ip → [CHECK] Bridge $br vlan-filtering=$bf" -ForegroundColor DarkCyan
 
-    # VLAN table entry for vlanId
-    $cmdVlanTpl = ':local id [/interface bridge vlan find where bridge=[BR] vlan-ids=[VID]]; :if ([:len $id]>0) do={:put ("present tagged=".[:tostr [/interface bridge vlan get $id tagged]]." untagged=".[:tostr [/interface bridge vlan get $id untagged]])} else={:put "missing"}'
+    # VLAN table entry for vlanId (ID-safe)
+    $cmdVlanTpl = ':local bid [/interface bridge find where name="[BR]"]; :local id [/interface bridge vlan find where bridge=$bid vlan-ids=[VID]]; :if ([:len $id]>0) do={:put ("present tagged=".[:tostr [/interface bridge vlan get $id tagged]]." untagged=".[:tostr [/interface bridge vlan get $id untagged]])} else={:put "missing"}'
     $cmdVlan = $cmdVlanTpl.Replace('[BR]',$br).Replace('[VID]',$vlanId)
     $vlanInfo = ((Invoke-SSHCommand -SSHSession $session -Command $cmdVlan).Output -join '').Trim()
     if ($vlanInfo -match '^present') { Write-Host ("$ip → [CHECK] VLAN {0} on {1}: {2} [OK]" -f $vlanId,$br,$vlanInfo) -ForegroundColor Green } else { Write-Host ("$ip → [CHECK] VLAN {0}: missing [FAIL]" -f $vlanId) -ForegroundColor Red }
@@ -160,15 +160,15 @@ function Print-NetworkChecks {
       }
     }
 
-    # DHCP client on mgmt.<vlanId>
-    $cmdDhcpTpl = ':local id [/ip dhcp-client find where interface="mgmt.[VID]"]; :if ([:len $id]>0) do={:put ( [/ip dhcp-client get $id status]." ".[/ip dhcp-client get $id address])} else={:put "none"}'
-    $cmdDhcp = $cmdDhcpTpl.Replace('[VID]',$vlanId)
+    # DHCP client on the bridge itself (native VLAN1 on $bridge)
+    $cmdDhcpTpl = ':local id [/ip dhcp-client find where interface="[BR]"]; :if ([:len $id]>0) do={:put ( [/ip dhcp-client get $id status]." ".[/ip dhcp-client get $id address])} else={:put "none"}'
+    $cmdDhcp = $cmdDhcpTpl.Replace('[BR]',$br)
     $dhcpInfo = ((Invoke-SSHCommand -SSHSession $session -Command $cmdDhcp).Output -join '').Trim()
     if($dhcpInfo -ne 'none'){
-      if($dhcpInfo -match '^bound'){ Write-Host "$ip → [CHECK] DHCP client on mgmt.${vlanId}: $dhcpInfo [OK]" -ForegroundColor Green }
-      else{ Write-Host "$ip → [CHECK] DHCP client on mgmt.${vlanId}: $dhcpInfo [WARN]" -ForegroundColor Yellow }
+      if($dhcpInfo -match '^bound'){ Write-Host "$ip → [CHECK] DHCP client on ${br}: $dhcpInfo [OK]" -ForegroundColor Green }
+      else{ Write-Host "$ip → [CHECK] DHCP client on ${br}: $dhcpInfo [WARN]" -ForegroundColor Yellow }
     } else {
-      Write-Host "$ip → [CHECK] DHCP client on mgmt.${vlanId}: none [INFO]" -ForegroundColor DarkGray
+      Write-Host "$ip → [CHECK] DHCP client on ${br}: none [INFO]" -ForegroundColor DarkGray
     }
   } catch {
     Write-Host "$ip → [CHECK] error: $($_.Exception.Message)" -ForegroundColor Red
@@ -296,10 +296,11 @@ function Force-Config {
 :do { /interface wireless remove [find where name~"wlan" and name!"wlan1" and name!"wlan2"] } on-error={}
 
 # --- BRIDGE/VLAN CLEANUP ---
-:local keep "$BridgeName";
+:local keep1 "bridge1";
+:local keep2 "$BridgeName";
 :foreach b in=[/interface bridge find] do={
   :local bn [/interface bridge get $b name];
-  :if ($bn != $keep) do={
+  :if (($bn != $keep1) and ($bn != $keep2)) do={
     /ip hotspot     remove [find where interface=$bn];
     /ip dhcp-server remove [find where interface=$bn];
     /ip dhcp-relay  remove [find where interface=$bn];
@@ -311,26 +312,13 @@ function Force-Config {
   }
 }
 
-# Explicitly remove default bridge1 if it exists and isn't our target
-:if (("$BridgeName" != "bridge1") && ([:len [/interface bridge find where name="bridge1"]]>0)) do={
-  /ip hotspot     remove [find where interface=bridge1];
-  /ip dhcp-server remove [find where interface=bridge1];
-  /ip dhcp-relay  remove [find where interface=bridge1];
-  /ip address     remove [find where interface=bridge1];
-  /interface bridge port remove [find where bridge=bridge1];
-  /interface bridge vlan remove [find where bridge=bridge1];
-  :do { /interface bridge disable [find where name=bridge1] } on-error={};
-  :do { /interface bridge remove  [find where name=bridge1] } on-error={};
-}
-
-# Remove VLAN rows from any non-target bridge
-:foreach v in=[/interface bridge vlan find] do={
-  :local vb [/interface bridge vlan get $v bridge];
-  :if ([:tostr $vb] != $keep) do={ /interface bridge vlan remove $v }
-}
-
-# Ensure target bridge exists
+# Ensure our two required bridges exist; don't touch others
 :if ([:len [/interface bridge find where name="$BridgeName"]]=0) do={ /interface bridge add name=$BridgeName }
+:if ([:len [/interface bridge find where name="bridge1"]]=0) do={ /interface bridge add name=bridge1 }
+
+# Make sure vlan-filtering is off before we rewrite rows later (we'll enable after writes)
+:do { /interface bridge set [find where name="$BridgeName"] vlan-filtering=no } on-error={}
+:do { /interface bridge set [find where name="bridge1"] vlan-filtering=no } on-error={}
 "@
   Exec-Step -session $session -ip $ip -cmd $cleanupCmd -desc 'cleanup wlans/bridges' | Out-Null
   # Discovery feedback: CAP mode and wireless count
@@ -365,7 +353,7 @@ function Force-Config {
   :if ([:len [find where bridge=$BridgeName interface=$en]]=0) do={ add bridge=$BridgeName interface=$en }
 }
 "@
-  if (-not (Exec-Step -session $session -ip $ip -cmd $addEthToBridgeCmd -desc 'ensure all ethernet ports in bridge1').ok) { Write-Host "$ip → note: failed to add all ethernet ports to bridge1" -ForegroundColor Yellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd $addEthToBridgeCmd -desc ("ensure all ethernet ports in $BridgeName")).ok) { Write-Host "$ip → note: failed to add all ethernet ports to $BridgeName" -ForegroundColor Yellow }
 
   # 3. Add wlan1/wlan2 to the target bridge with PVID=$VlanId (idempotent)
   $addWlanToBridgeCmd = @"
@@ -380,7 +368,7 @@ function Force-Config {
   }
 }
 "@
-  if (-not (Exec-Step -session $session -ip $ip -cmd $addWlanToBridgeCmd -desc 'ensure wlan1/wlan2 in bridge1 with PVID').ok) { Write-Host "$ip → note: failed to add/set wlan1/wlan2 with PVID" -ForegroundColor Yellow }
+  if (-not (Exec-Step -session $session -ip $ip -cmd $addWlanToBridgeCmd -desc ("ensure wlan1/wlan2 in $BridgeName with PVID")).ok) { Write-Host "$ip → note: failed to add/set wlan1/wlan2 with PVID on $BridgeName" -ForegroundColor Yellow }
 
   # 4. VLAN table: VLAN 1 native (untagged to bridge+ether1),
   #    VLAN $VlanId for SSIDs (untagged on WLANs, tagged to bridge+ether1)
@@ -400,7 +388,7 @@ function Force-Config {
 :if ([:len [/interface wireless find where name=`"wlan1`"]]>0) do={ :set untag "wlan1" }
 :if ([:len [/interface wireless find where name=`"wlan2`"]]>0) do={ :set untag ([:len $untag]>0 ? "$untag,wlan2" : "wlan2") }
 
-# Always add VLAN $VlanId row
+# Always add VLAN $VlanId row, tagged-only fallback if no WLANs
 :local tag "$BridgeName,ether1";
 :if ([:len $untag]>0) do={
   /interface bridge vlan add bridge=$brId vlan-ids=$VlanId tagged=$tag untagged=$untag
@@ -413,14 +401,28 @@ function Force-Config {
   if (-not (Exec-Step -session $session -ip $ip -cmd $vlanRowCmd -desc 'ensure VLAN row for VLAN').ok) { Write-Host "$ip → VLAN row add/set failed" -ForegroundColor Yellow }
 
   # 5. Enable VLAN filtering on the target bridge
-  if (-not (Exec-Step -session $session -ip $ip -cmd "/interface bridge set [find where name=$BridgeName] vlan-filtering=yes" -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
+  $setVlanFilteringTpl = ':local id [/interface bridge find where name="[BR]"]; /interface bridge set $id vlan-filtering=yes'
+  $setVlanFiltering    = $setVlanFilteringTpl.Replace('[BR]',$BridgeName)
+  if (-not (Exec-Step -session $session -ip $ip -cmd $setVlanFiltering -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
+
+  # 5b. Verify VLAN-$VlanId exists on the target bridge and print details
+  $verifyCountTpl = ':local bid [/interface bridge find where name="[BR]"]; :put [:len [/interface bridge vlan find where bridge=$bid vlan-ids=[VID]]]'
+  $verifyCountCmd = $verifyCountTpl.Replace('[BR]',$BridgeName).Replace('[VID]',$VlanId)
+  Exec-Step -session $session -ip $ip -desc 'verify VLAN row count' -cmd $verifyCountCmd -ShowOut | Out-Null
+
+  $printDetailTpl = ':local bid [/interface bridge find where name="[BR]"]; /interface bridge vlan print detail where bridge=$bid'
+  $printDetailCmd = $printDetailTpl.Replace('[BR]',$BridgeName)
+  Exec-Step -session $session -ip $ip -desc 'bridge vlan print (post-apply)' -cmd $printDetailCmd -ShowOut | Out-Null
+  # 5c. Print wlan PVIDs (post-apply) for visibility
+  Exec-Step -session $session -ip $ip -desc 'wlan PVIDs (post-apply)' -cmd ':foreach w in={wlan1;wlan2} do={ :local id [/interface bridge port find where interface=$w]; :if ([:len $id]>0) do={ :put ($w." pvid=". [/interface bridge port get $id pvid]) } else={ :put ($w." not-in-bridge") } }' -ShowOut | Out-Null
 
   # 6. DHCP client on the target bridge (no mgmt VLAN names)
-  $dhcpCmd = @"
+  $dhcpCmdTpl = @'
 /ip dhcp-client
 :do { remove [find] } on-error={}
-:add interface="$BridgeName" add-default-route=no use-peer-dns=no use-peer-ntp=no disabled=no
-"@
+:add interface=[BR] add-default-route=no use-peer-dns=no use-peer-ntp=no disabled=no
+'@
+  $dhcpCmd = $dhcpCmdTpl.Replace('[BR]',$BridgeName)
   Exec-Step -session $session -ip $ip -cmd $dhcpCmd -desc 'ensure DHCP client on bridge (VLAN1 native)' | Out-Null
 
   # --- POST state dump ---
