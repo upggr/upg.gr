@@ -98,7 +98,7 @@ function Probe-DHCP-OnWlan {
   try {
     Invoke-SSHCommand -SSHSession $session -Command '/ip dhcp-client remove [find where comment=probe]' | Out-Null
     Invoke-SSHCommand -SSHSession $session -Command '/interface vlan remove [find where name=probe_vlan10]' | Out-Null
-    Invoke-SSHCommand -SSHSession $session -Command "/interface vlan add name=probe_vlan10 interface=$bridge vlan-id=$VlanId" | Out-Null
+    Invoke-SSHCommand -SSHSession $session -Command "/interface vlan add name=probe_vlan10 interface=ether1 vlan-id=$VlanId" | Out-Null
     Invoke-SSHCommand -SSHSession $session -Command '/ip dhcp-client add interface=probe_vlan10 add-default-route=no use-peer-dns=no use-peer-ntp=no disabled=no comment=probe' | Out-Null
     $stCmd = ':local id [/ip dhcp-client find where interface=probe_vlan10 comment=probe]; :if ([:len $id]>0) do={:put [/ip dhcp-client get $id status]} else={:put none}'
     $adCmd = ':local id [/ip dhcp-client find where interface=probe_vlan10 comment=probe]; :put [/ip dhcp-client get $id address]'
