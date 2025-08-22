@@ -290,19 +290,24 @@ function Force-Config {
   # --- CLEANUP FIRST: remove unknown/virtual WLANs and non-bridge1 bridges ---
   $cleanupCmd = @"
 # Remove virtual/unknown WLANs
-:do { /interface wireless remove [find where type=virtual] } on-error={}
-:do { /interface wireless remove [find where name~\"wlan\" and name!\"wlan1\" and name!\"wlan2\"] } on-error={}
+:do { /interface wireless remove [find where master-interface!="" ] } on-error={}
+:do { /interface wireless remove [find where type=virtual ] } on-error={}
+:do { /interface wireless remove [find where name~"wlan" and name!"wlan1" and name!"wlan2"] } on-error={}
 
-# Remove any bridges except bridge1 (safely: ports -> vlan rows -> bridge)
-:foreach b in=[/interface bridge find where name!\"bridge1\"] do={
+# Tear down hotspot/DHCP/IP bound to non-bridge1 bridges, then remove those bridges
+:foreach b in=[/interface bridge find where name!"bridge1"] do={
   :local bn [/interface bridge get $b name];
+  /ip dhcp-server remove [find where interface=$bn];
+  /ip dhcp-relay  remove [find where interface=$bn];
+  /ip hotspot     remove [find where interface=$bn];
+  /ip address     remove [find where interface=$bn];
   /interface bridge port remove [find where bridge=$bn];
   /interface bridge vlan remove [find where bridge=$bn];
   /interface bridge remove [find where name=$bn];
 }
 
 # Ensure bridge1 exists
-:if ([:len [/interface bridge find where name=\"bridge1\"]]=0) do={ /interface bridge add name=bridge1 }
+:if ([:len [/interface bridge find where name="bridge1"]]=0) do={ /interface bridge add name=bridge1 }
 "@
   Exec-Step -session $session -ip $ip -cmd $cleanupCmd -desc 'cleanup wlans/bridges' | Out-Null
   # Discovery feedback: CAP mode and wireless count
@@ -373,6 +378,8 @@ add bridge=bridge1 vlan-ids=$VlanId tagged=\$tagged untagged=\$untagged
 
   # 6. Enable VLAN filtering on bridge1
   if (-not (Exec-Step -session $session -ip $ip -cmd '/interface bridge set [find where name=bridge1] vlan-filtering=yes' -desc 'enable vlan-filtering').ok) { return @{ssid1=''; ssid2=''; status='vlan-filtering-failed'; session=$session} }
+  # Re-apply VLAN1 fix post-enable (v6 sometimes reverts it when enabling filtering)
+  Exec-Step -session $session -ip $ip -cmd '/interface bridge vlan set [find where bridge=bridge1 vlan-ids=1] tagged=bridge1,ether1 untagged=' -desc 'fix VLAN1 again (post-enable)' | Out-Null
 
   # 6.5 Ensure management VLAN interface and DHCP client on mgmt.$VlanId
   $mgmtCmd = @"
@@ -397,15 +404,13 @@ Probe-DHCP-OnWlan -session $session -ip $ip -bridge 'bridge1'
   # Pre-check: ensure SSID + radios enabled BEFORE reboot, forcibly apply correct SSID and VLANs and forcibly disable CAPsMAN
   Write-Host "$ip → Forcing SSID/VLAN settings and disabling CAPsMAN before reboot..." -ForegroundColor Yellow
   $enforceCmd = @"
-'; :do {
+:do {
   /interface wireless cap disable;
   /interface wireless enable wlan1,wlan2;
-  /interface wireless set wlan1 ssid=`"$ssid`";
-  /interface wireless set wlan1 country="greece";
-  /interface wireless set wlan2 ssid=`"$ssid`";
-  /interface wireless set wlan2 country="greece";
-  /interface bridge port set [find interface=wlan1] pvid=10;
-  /interface bridge port set [find interface=wlan2] pvid=10;
+  /interface wireless set wlan1 ssid=`"$SSID`" country="greece";
+  /interface wireless set wlan2 ssid=`"$SSID`" country="greece";
+  /interface bridge port set [find interface=wlan1] pvid=$VlanId;
+  /interface bridge port set [find interface=wlan2] pvid=$VlanId;
 } on-error={:put "=== ERROR applying SSID/VLAN settings ==="}
 "@
   $enfResult = Exec-Step -session $session -ip $ip -cmd $enforceCmd -desc 'Force-disable CAPsMAN, enable WLANs, set SSID/VLAN'
@@ -505,7 +510,8 @@ for($i=$StartIP; $i -le $EndIP; $i++){
 
     # Remove any leftover virtual wireless interfaces
     $removeVirtuals = @"
-/interface wireless remove [find where type=virtual]
+/interface wireless remove [find where master-interface!="" ]
+/interface wireless remove [find where type=virtual ]
 "@
     Exec-Step -session $session -ip $ip -cmd $removeVirtuals -desc "Remove virtual wireless interfaces"
 
