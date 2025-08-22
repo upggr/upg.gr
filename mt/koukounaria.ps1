@@ -307,6 +307,9 @@ function Force-Config {
   Dump-BridgeState -session $session -ip $ip -label 'PRE'
 
   # --- Consolidated Bridge/VLAN configuration ---
+  # 0. Remove any extra bridges except bridge1
+  $removeExtraBridges = '/interface bridge remove [find where name!="bridge1"]'
+  Exec-Step -session $session -ip $ip -cmd $removeExtraBridges -desc 'remove extra bridges' | Out-Null
   # 1. Ensure bridge1 exists
   if (-not (Exec-Step -session $session -ip $ip -cmd ':do { /interface bridge add name=bridge1 } on-error={}' -desc 'ensure bridge1').ok) { return @{ssid1=''; ssid2=''; status='bridge-add-failed'; session=$session} }
 
@@ -335,7 +338,7 @@ function Force-Config {
 "@
   if (-not (Exec-Step -session $session -ip $ip -cmd $addWlanToBridgeCmd -desc 'ensure wlan1/wlan2 in bridge1 with PVID').ok) { Write-Host "$ip → note: failed to add/set wlan1/wlan2 with PVID" -ForegroundColor Yellow }
 
-  # 4. VLAN row for $VlanId: bridge1,ether1 tagged; wlan1,wlan2 untagged
+  # 4. VLAN row for $VlanId: bridge1,ether1 tagged; wlan1,wlan2 untagged (remove+add to guarantee fresh)
   $vlanRowCmd = @"
 :local tagged "bridge1,ether1"
 :local untagged ""
@@ -344,11 +347,8 @@ function Force-Config {
   :if ([:len \$untagged]>0) do={ :set untagged "\$untagged,wlan2" } else={ :set untagged "wlan2" }
 }
 /interface bridge vlan
-:if ([:len [find where bridge=bridge1 vlan-ids=$VlanId]]=0) do={
-  add bridge=bridge1 vlan-ids=$VlanId tagged=\$tagged untagged=\$untagged
-} else={
-  set [find where bridge=bridge1 vlan-ids=$VlanId] tagged=\$tagged untagged=\$untagged
-}
+:do { remove [find where bridge=bridge1 vlan-ids=$VlanId] } on-error={}
+add bridge=bridge1 vlan-ids=$VlanId tagged=\$tagged untagged=\$untagged
 "@
   if (-not (Exec-Step -session $session -ip $ip -cmd $vlanRowCmd -desc 'ensure VLAN row for VLAN').ok) { Write-Host "$ip → VLAN row add/set failed" -ForegroundColor Yellow }
 
