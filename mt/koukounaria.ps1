@@ -2,7 +2,7 @@
 Import-Module Posh-SSH -ErrorAction Stop
 
 # ======== USER CONFIG ========
-$BaseNet        = "192.168.210."
+$BaseNet        = "192.168.208."
 $StartIP        = 3      # inclusive
 $EndIP          = 253      # inclusive
 $Username       = "admin"
