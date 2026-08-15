@@ -1,0 +1,31 @@
+---
+/** Shared home composition, rendered by both / (el) and /en. */
+import Base from '../layouts/Base.astro';
+import Hero from './Hero.astro';
+import About from './About.astro';
+import Services from './Services.astro';
+import Stack from './Stack.astro';
+import Platforms from './Platforms.astro';
+import Pricing from './Pricing.astro';
+import ProjectsPreview from './ProjectsPreview.astro';
+import Team from './Team.astro';
+import Clients from './Clients.astro';
+import Contact from './Contact.astro';
+import { getDict, langFromUrl, type Lang } from '../i18n';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+---
+
+<Base title={t.meta.home.title} description={t.meta.home.description}>
+  <Hero />
+  <About />
+  <Services />
+  <Platforms />
+  <Stack />
+  <Pricing />
+  <ProjectsPreview />
+  <Team />
+  <Clients />
+  <Contact />
+</Base>

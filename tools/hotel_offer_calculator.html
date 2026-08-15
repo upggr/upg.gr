@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hotel Offer Calculator</title>
+    <style>
+        #logo {
+            width: 300px;
+            height: 100px;
+            object-fit: contain;
+        }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="max-w-3xl mx-auto p-4">
+        <div class="bg-white shadow rounded p-4 mb-4 flex justify-center">
+            <img id="logo" src="logo.png" alt="Logo" class="w-72 h-24 object-contain" />
+        </div>
+        <div class="bg-white shadow rounded p-6 mb-4">
+            <form id="offerForm" onsubmit="return false;">
+                <label for="workCostPerHour" class="block text-sm font-medium text-gray-700 mb-1">Work Cost per Hour (€)</label>
+                <input type="number" id="workCostPerHour" name="workCostPerHour" min="0" step="0.01" value="50" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300 mb-3" />
+
+                <label for="companyName" class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                <input type="text" id="companyName" name="companyName" required class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300 mb-3" />
+
+                <label for="numRooms" class="block text-sm font-medium text-gray-700 mb-1">Number of Rooms</label>
+                <input type="number" id="numRooms" name="numRooms" min="1" value="1" required class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300 mb-3" />
+
+                <div id="featuresContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3"></div>
+
+                <div id="cableWorkInfo" aria-live="polite" aria-atomic="true" class="bg-blue-50 text-blue-800 border border-blue-200 rounded p-3 font-medium mb-3">
+                    Cable patching both ends — Hours: 0 hrs<br />
+                    Cable patching both ends — Cost
+                    <span
+                        class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-400 rounded-full cursor-pointer"
+                        title="Calculated as: (Total Items × 2 × 0.20 hours) × Work Cost per Hour"
+                        tabindex="0"
+                        aria-label="Cable Work Cost calculation explanation"
+                    >?</span>
+                    : €0.00
+                </div>
+
+
+                <button id="generateOfferBtn" type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded shadow">Generate Offer</button>
+            </form>
+        </div>
+        <div id="offerResult"></div>
+    </div>
+
+    <script>
+        // Pricing is now loaded from external XML (pricing.xml). Fallback included if fetch fails.
+        let pricing = null;
+
+        const PRICING_FALLBACK = {
+          rooms: { basePrice: 100 },
+          features: {
+            Firewall: { 'Sophos XG': 1000, 'Alta Route 10': 200 },
+            AccessPoints: {
+              'Alta Labs AP6W Wi-Fi 6 (Wall mount)': 120,
+              'Alta Labs AP6 Wi-Fi 6': 150,
+              'Alta Labs AP6 Professional Wi-Fi 6': 180
+            },
+            VoIPPhones: { FanvilH5W: 120, FanvilH4W: 100 },
+            TVs: { 'LG TV 42"': 320, 'Generic Android TV': 250 },
+            Cameras: 150,
+            Computers: 300
+          }
+        };
+
+        const SETTINGS_FALLBACK = {
+          currency: { code: 'EUR', locale: 'el-GR' },
+          labor: { hourlyRate: 50 },
+          cablePatching: { endsPerItem: 2, hoursPerEnd: 0.20, label: 'Cable patching both ends' }
+        };
+
+        async function loadPricingFromXML() {
+          try {
+            const res = await fetch('pricing.xml', { cache: 'no-cache' });
+            if (!res.ok) throw new Error('Failed to load pricing.xml');
+            const xmlText = await res.text();
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlText, 'application/xml');
+
+            const roomsEl = xml.querySelector('pricing > rooms');
+            const basePrice = roomsEl ? parseFloat(roomsEl.getAttribute('basePrice')) : 100;
+
+            const featuresObj = {};
+            const quantityModes = {};
+            const defaultQuantities = {};
+            xml.querySelectorAll('pricing > features > feature').forEach(f => {
+              const name = f.getAttribute('name');
+              const quantityMode = (f.getAttribute('quantityMode') || 'manual').trim();
+              quantityModes[name] = quantityMode;
+
+              // Parse defaultQuantity attribute
+              const dqAttr = f.getAttribute('defaultQuantity');
+              let dqVal = undefined;
+              if (dqAttr) {
+                if (dqAttr.trim().toLowerCase() === 'rooms') {
+                  dqVal = 'rooms';
+                } else {
+                  const n = parseFloat(dqAttr);
+                  if (!Number.isNaN(n) && n > 0) dqVal = n;
+                }
+              }
+              defaultQuantities[name] = dqVal; // may be undefined
+
+            const modelNodes = f.querySelectorAll('model');
+            if (modelNodes && modelNodes.length > 0) {
+              // Prefer explicit models if present
+              const models = {};
+              modelNodes.forEach(m => {
+                const modelName = m.getAttribute('name');
+                const modelPrice = parseFloat(m.getAttribute('price')) || 0;
+                const isNetwork = ((m.getAttribute('isnetwork') || '').toLowerCase() === 'yes');
+                const isPoe = ((m.getAttribute('ispoe') || '').toLowerCase() === 'yes');
+                // Accept both camelCase and lowercase for poePorts/normalPorts
+                const poeAttr = m.getAttribute('poePorts') ?? m.getAttribute('poeports');
+                const normAttr = m.getAttribute('normalPorts') ?? m.getAttribute('normalports');
+                const poePorts = parseInt(poeAttr, 10);
+                const normalPorts = parseInt(normAttr, 10);
+                models[modelName] = {
+                  price: modelPrice,
+                  isnetwork: isNetwork,
+                  ispoe: isPoe,
+                  poePorts: Number.isFinite(poePorts) ? poePorts : undefined,
+                  normalPorts: Number.isFinite(normalPorts) ? normalPorts : undefined
+                };
+              });
+              featuresObj[name] = models;
+            } else {
+                // Fallback to numeric price
+                const priceAttr = f.getAttribute('price');
+                featuresObj[name] = (priceAttr !== null) ? parseFloat(priceAttr) : 0;
+              }
+            });
+
+            // Parse <settings>
+            const settingsEl = xml.querySelector('pricing > settings');
+            const currencyEl = settingsEl ? settingsEl.querySelector('currency') : null;
+            const laborEl = settingsEl ? settingsEl.querySelector('labor') : null;
+            const cableEl = settingsEl ? settingsEl.querySelector('cablePatching') : null;
+
+            const settings = {
+              currency: {
+                code: currencyEl ? (currencyEl.getAttribute('code') || 'EUR') : 'EUR',
+                locale: currencyEl ? (currencyEl.getAttribute('locale') || 'el-GR') : 'el-GR'
+              },
+              labor: {
+                hourlyRate: laborEl ? (parseFloat(laborEl.getAttribute('hourlyRate')) || 50) : 50
+              },
+              cablePatching: {
+                endsPerItem: cableEl ? (parseFloat(cableEl.getAttribute('endsPerItem')) || 2) : 2,
+                hoursPerEnd: cableEl ? (parseFloat(cableEl.getAttribute('hoursPerEnd')) || 0.20) : 0.20,
+                label: cableEl ? (cableEl.getAttribute('label') || 'Cable patching both ends') : 'Cable patching both ends'
+              }
+            };
+
+            pricing = { rooms: { basePrice }, features: featuresObj, meta: { quantityModes, settings, defaultQuantities } };
+          } catch (e) {
+            console.warn('[pricing] Using fallback pricing due to error:', e);
+            // Provide fallback for defaultQuantities
+            const DEFAULT_QTY_FALLBACK = { Firewall: 1, AccessPoints: 1, VoIPPhones: 'rooms', TVs: 'rooms', Cameras: 1, Computers: 1 };
+            // If PRICING_META_FALLBACK is not defined, fall back to previous usage
+            if (typeof PRICING_META_FALLBACK !== 'undefined') {
+              pricing = { ...PRICING_FALLBACK, meta: { ...PRICING_META_FALLBACK, settings: SETTINGS_FALLBACK, defaultQuantities: DEFAULT_QTY_FALLBACK } };
+            } else {
+              // fallback to quantityModes only
+              const fallbackQuantityModes = { Firewall: 'manual', AccessPoints: 'manual', VoIPPhones: 'manual', TVs: 'manual', Cameras: 'manual', Computers: 'manual' };
+              pricing = { ...PRICING_FALLBACK, meta: { quantityModes: fallbackQuantityModes, settings: SETTINGS_FALLBACK, defaultQuantities: DEFAULT_QTY_FALLBACK } };
+            }
+          }
+        }
+
+        const workCostPerHourInput = document.getElementById('workCostPerHour');
+        const cableWorkInfoDiv = document.getElementById('cableWorkInfo');
+
+        // Mutable currency formatter, will be set after pricing/settings load
+        let CURRENCY_FMT = new Intl.NumberFormat('el-GR', { style: 'currency', currency: 'EUR' });
+
+
+        // Runtime registry of feature UI elements created dynamically from XML
+        const featureUI = {}; // { FeatureName: { cb, qty, model } }
+
+        function idFromName(name){
+          return name.replace(/\s+/g,'').replace(/[^a-zA-Z0-9]/g,'');
+        }
+
+        // Helper to compute the default quantity for a feature based on XML meta
+        function computeDefaultQty(name) {
+          const rooms = parseInt(document.getElementById('numRooms').value, 10) || 1;
+          const dq = pricing?.meta?.defaultQuantities?.[name];
+          if (dq === 'rooms') return rooms;
+          if (typeof dq === 'number' && dq > 0) return dq;
+          return 1;
+        }
+
+        function buildFeaturesUI(){
+          const container = document.getElementById('featuresContainer');
+          container.innerHTML = '';
+          const qm = (pricing?.meta?.quantityModes) || {};
+          featureUI.__order = [];
+
+          Object.keys(pricing.features).forEach(featureName => {
+            const fId = idFromName(featureName);
+            const dict = pricing.features[featureName];
+            const hasModels = typeof dict === 'object' && !Number.isFinite(dict);
+
+            const wrap = document.createElement('div');
+
+            // Special multi-model UI for Switches
+            let switchesBlock = null;
+            if (featureName === 'Switches') {
+              switchesBlock = document.createElement('div');
+              switchesBlock.style.display = 'none';
+              switchesBlock.className = 'ml-3 mt-2 space-y-2';
+
+              const helper = document.createElement('div');
+              helper.className = 'text-sm text-gray-600 font-medium';
+              helper.id = 'switchesHelper';
+              helper.setAttribute('aria-live','polite');
+              helper.setAttribute('aria-atomic','true');
+              helper.textContent = 'POE ports: 0, normal ports: 0';
+              switchesBlock.appendChild(helper);
+
+              const rowsWrap = document.createElement('div');
+              rowsWrap.id = 'switchRows';
+              rowsWrap.className = 'space-y-2';
+              switchesBlock.appendChild(rowsWrap);
+
+              const addBtn = document.createElement('button');
+              addBtn.type = 'button';
+              addBtn.className = 'inline-flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded border';
+              addBtn.textContent = 'Add switch model';
+              switchesBlock.appendChild(addBtn);
+
+              function addSwitchRow() {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2';
+
+                const sel = document.createElement('select');
+                sel.className = 'border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300';
+                const d = pricing.features['Switches'];
+                for (const model in d) {
+                  const opt = document.createElement('option');
+                  opt.value = model;
+                  const priceVal = (d[model] && typeof d[model] === 'object') ? d[model].price : d[model];
+                  opt.textContent = `${model} (${CURRENCY_FMT.format(priceVal)})`;
+                  sel.appendChild(opt);
+                }
+
+                const qty = document.createElement('input');
+                qty.type = 'number'; qty.min = '1'; qty.value = '1';
+                qty.className = 'w-24 border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300';
+
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'px-2 py-1 text-red-600 hover:text-red-700';
+                del.textContent = '×';
+
+                row.appendChild(sel); row.appendChild(qty); row.appendChild(del);
+                rowsWrap.appendChild(row);
+
+                sel.addEventListener('change', () => { updateSwitchesHelper(); });
+                qty.addEventListener('input', () => { if (parseInt(qty.value,10) < 1) qty.value = '1'; updateSwitchesHelper(); });
+                del.addEventListener('click', () => { rowsWrap.removeChild(row); updateSwitchesHelper(); });
+
+                // track rows
+                featureUI['Switches'].multi.push({ select: sel, qty });
+              }
+
+              addBtn.addEventListener('click', addSwitchRow);
+              wrap.appendChild(switchesBlock);
+            }
+
+            // label + checkbox
+            const label = document.createElement('label');
+            label.className = 'block text-sm font-medium text-gray-700 mb-1';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = fId + '_cb';
+            cb.className = 'mr-2';
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + featureName.replace(/([a-z])([A-Z])/g, '$1 $2')));
+            wrap.appendChild(label);
+
+            // qty (manual only)
+            const qty = document.createElement('input');
+            qty.type = 'number';
+            qty.min = '1';
+            qty.value = '1';
+            qty.className = 'feature-quantity w-24 ml-3 border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300';
+            qty.style.display = 'none';
+            wrap.appendChild(qty);
+            if (featureName === 'Switches') { qty.style.display = 'none'; qty.disabled = true; }
+
+            // model select (if models, but NOT for Switches)
+            let modelSel = null;
+            if (hasModels && featureName !== 'Switches') {
+              modelSel = document.createElement('select');
+              modelSel.className = 'feature-model w-full ml-3 mt-2 border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300';
+              modelSel.style.display = 'none';
+              for (const model in dict) {
+                const opt = document.createElement('option');
+                opt.value = model;
+                const priceVal = (dict[model] && typeof dict[model] === 'object') ? dict[model].price : dict[model];
+                opt.textContent = `${model} (${CURRENCY_FMT.format(priceVal)})`;
+                modelSel.appendChild(opt);
+              }
+              wrap.appendChild(modelSel);
+            }
+
+            container.appendChild(wrap);
+            featureUI[featureName] = { cb, qty, model: modelSel };
+            if (featureName === 'Switches') featureUI[featureName].multi = [];
+            featureUI.__order.push(featureName);
+
+            // interactions
+            cb.addEventListener('change', () => {
+              const mode = (qm[featureName] || 'manual');
+
+              if (featureName === 'Switches') {
+                // Always hide/disable the standard qty; Switches use multi-rows instead
+                qty.style.display = 'none';
+                qty.disabled = true;
+              } else if (mode === 'perRoom') {
+                qty.style.display = 'none';
+                qty.disabled = true;
+                qty.value = document.getElementById('numRooms').value || 1;
+              } else {
+                qty.style.display = cb.checked ? 'inline-block' : 'none';
+                qty.disabled = !cb.checked;
+                if (cb.checked) {
+                  qty.value = computeDefaultQty(featureName);
+                }
+              }
+
+              if (modelSel) modelSel.style.display = cb.checked ? 'block' : 'none';
+              updateCableWorkInfo();
+              updateSwitchesHelper();
+
+              if (featureName === 'Switches') {
+                switchesBlock.style.display = cb.checked ? 'block' : 'none';
+                updateSwitchesHelper();
+              }
+            });
+            qty.addEventListener('input', () => { updateCableWorkInfo(); updateSwitchesHelper(); });
+            if (modelSel) modelSel.addEventListener('change', () => { updateCableWorkInfo(); updateSwitchesHelper(); });
+          });
+
+          // keep perRoom quantities in sync with rooms
+          document.getElementById('numRooms').addEventListener('input', () => {
+            const rooms = document.getElementById('numRooms').value || 1;
+            featureUI.__order.forEach(name => {
+              const mode = (qm[name] || 'manual');
+              if (mode === 'perRoom' && featureUI[name].qty) {
+                featureUI[name].qty.value = rooms;
+              }
+            });
+            // Also sync manual features that declared defaultQuantity='rooms'
+            featureUI.__order.forEach(name => {
+              const dq = pricing?.meta?.defaultQuantities?.[name];
+              const mode = (qm[name] || 'manual');
+              if (dq === 'rooms' && mode !== 'perRoom') {
+                const ui = featureUI[name];
+                if (ui && ui.cb.checked && ui.qty) ui.qty.value = rooms;
+              }
+            });
+            updateCableWorkInfo();
+            updateSwitchesHelper();
+          });
+        }
+
+        (async function initPricing(){
+          await loadPricingFromXML();
+          // Set currency formatter from settings
+          const cur = (pricing.meta && pricing.meta.settings && pricing.meta.settings.currency) ? pricing.meta.settings.currency : SETTINGS_FALLBACK.currency;
+          CURRENCY_FMT = new Intl.NumberFormat(cur.locale, { style: 'currency', currency: cur.code });
+          // Set hourly rate input from settings
+          const labor = (pricing.meta && pricing.meta.settings && pricing.meta.settings.labor) ? pricing.meta.settings.labor : SETTINGS_FALLBACK.labor;
+          document.getElementById('workCostPerHour').value = labor.hourlyRate;
+          buildFeaturesUI();
+          updateCableWorkInfo();
+          updateSwitchesHelper();
+        })();
+
+
+        workCostPerHourInput.addEventListener('input', () => {
+            updateCableWorkInfo();
+        });
+
+        // Helper function to get selected quantities per feature (0 if not selected), respecting quantityMode
+        function getSelectedQuantities(){
+          const qm = pricing?.meta?.quantityModes || {};
+          const rooms = parseInt(document.getElementById('numRooms').value,10) || 1;
+          const out = {};
+          if (!featureUI.__order) return out;
+          featureUI.__order.forEach(name => {
+            const ui = featureUI[name];
+            if (!ui || !ui.cb.checked){ out[name] = 0; return; }
+            const mode = qm[name] || 'manual';
+            out[name] = (mode === 'perRoom') ? rooms : Math.max(1, parseInt(ui.qty.value,10) || 0);
+          });
+          return out;
+        }
+
+        // Helper to compute port needs for switches (POE & normal)
+        function computePortNeeds() {
+          let poe = 0, normal = 0;
+          const qm = pricing?.meta?.quantityModes || {};
+          const rooms = parseInt(document.getElementById('numRooms').value,10) || 1;
+          if (!featureUI.__order) return {poe, normal};
+          featureUI.__order.forEach(name => {
+            if (name === 'Switches') return; // switches themselves don't consume upstream ports
+            const ui = featureUI[name];
+            if (!ui || !ui.cb.checked) return;
+            const dict = pricing.features[name];
+            const hasModels = typeof dict === 'object' && !Number.isFinite(dict);
+            const qty = (qm[name] === 'perRoom') ? rooms : Math.max(1, parseInt(ui.qty.value,10) || 0);
+            if (hasModels && ui.model) {
+              const meta = dict[ui.model.value];
+              const isNet = meta && meta.isnetwork === true;
+              const isPoe = meta && meta.ispoe === true;
+              if (isNet) {
+                if (isPoe) poe += qty; else normal += qty;
+              }
+            }
+          });
+          return {poe, normal};
+        }
+
+        // Compute provided switch capacity (total POE and normal ports)
+        function computeSwitchProvidedCapacity() {
+          let poe = 0, normal = 0;
+          const ui = featureUI['Switches'];
+          if (!ui || !ui.multi || !pricing?.features?.Switches) return {poe, normal};
+          const dict = pricing.features['Switches'];
+
+          ui.multi.forEach(r => {
+            const model = r.select.value;
+            const qty = Math.max(1, parseInt(r.qty.value,10) || 0);
+            const meta = dict[model];
+            let poePer = 0, normalPer = 0;
+            if (meta && typeof meta === 'object' && (Number.isFinite(meta.poePorts) || Number.isFinite(meta.normalPorts))) {
+              poePer = Number.isFinite(meta.poePorts) ? meta.poePorts : 0;
+              normalPer = Number.isFinite(meta.normalPorts) ? meta.normalPorts : 0;
+            } else {
+              // Heuristic fallback based on model name
+              const name = (model || '').toLowerCase();
+              const isPoe = name.includes('poe');
+              const is48 = name.includes('48');
+              const is24 = name.includes('24');
+              const guess = is48 ? 48 : (is24 ? 24 : 8);
+              if (isPoe) poePer = guess; else normalPer = guess;
+            }
+            poe += poePer * qty;
+            normal += normalPer * qty;
+          });
+          return {poe, normal};
+        }
+
+        function updateSwitchesHelper() {
+          const helper = document.getElementById('switchesHelper');
+          if (!helper) return;
+          const need = computePortNeeds();
+          const have = computeSwitchProvidedCapacity();
+          const pass = (have.poe >= need.poe) && (have.normal >= need.normal);
+          const statusText = pass ? 'PASS' : 'FAIL';
+          const statusClass = pass ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold';
+
+          helper.innerHTML = `
+            <div>You need ${need.normal} non poe and ${need.poe} poe</div>
+            <div>You have ${have.normal} non poe and ${have.poe} poe</div>
+            <div>Status: <span class="${statusClass}">${statusText}</span></div>
+          `;
+        }
+
+        // Helper function to update cable work hours and cost display
+        function updateCableWorkInfo() {
+            const quantities = getSelectedQuantities();
+            const totalItems = Object.entries(quantities)
+              .filter(([name]) => name !== 'Switches')
+              .reduce((sum, [,qty]) => sum + qty, 0);
+            const cab = (pricing.meta && pricing.meta.settings && pricing.meta.settings.cablePatching) ? pricing.meta.settings.cablePatching : SETTINGS_FALLBACK.cablePatching;
+            const hours = totalItems * cab.endsPerItem * cab.hoursPerEnd;
+            let hourlyRate = parseFloat(workCostPerHourInput.value);
+            if (isNaN(hourlyRate) || hourlyRate < 0) {
+                hourlyRate = 0;
+            }
+            const cost = hours * hourlyRate;
+            const label = cab.label || 'Cable patching both ends';
+            const formulaText = `Calculated as: (Total Items × ${cab.endsPerItem} × ${cab.hoursPerEnd} hours) × Work Cost per Hour`;
+            cableWorkInfoDiv.innerHTML = `${label} — Hours: ${hours.toFixed(2)} hrs<br />${label} — Cost
+              <span class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-400 rounded-full cursor-pointer" title="${formulaText}" tabindex="0" aria-label="Cable Work Cost calculation explanation">?</span>
+              : ${CURRENCY_FMT.format(cost)}`;
+        }
+
+
+        document.getElementById('generateOfferBtn').addEventListener('click', () => {
+          const companyName = document.getElementById('companyName').value.trim();
+          const numRooms = parseInt(document.getElementById('numRooms').value, 10);
+          if (!companyName) {
+              alert('Please enter the company name.');
+              return;
+          }
+          if (!numRooms || numRooms < 1) {
+              alert('Please enter a valid number of rooms.');
+              return;
+          }
+
+          const hourlyRate = parseFloat(workCostPerHourInput.value);
+          if (isNaN(hourlyRate) || hourlyRate < 0) {
+              alert('Please enter a valid work cost per hour.');
+              return;
+          }
+
+          // Collect selected features and their quantities
+          const selectedFeatures = featureUI.__order.filter(name => featureUI[name].cb.checked);
+
+          let totalPrice = 0;
+          const roomRows = [];
+          const featureRows = [];
+          let cableRow = '';
+
+          // Rooms pricing
+          const roomsPrice = pricing.rooms.basePrice * numRooms;
+          totalPrice += roomsPrice;
+          roomRows.push(`<tr>
+              <td class="px-4 py-2 border-b border-gray-200">Rooms (${numRooms})</td>
+              <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(pricing.rooms.basePrice)}</td>
+              <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(roomsPrice)}</td>
+          </tr>`);
+
+          // Features pricing
+          for (const feature of selectedFeatures) {
+            const dict = pricing.features[feature];
+            const hasModels = typeof dict === 'object' && !Number.isFinite(dict);
+            const model = hasModels ? featureUI[feature].model.value : null;
+            const unitPrice = hasModels ? ((dict[model] && typeof dict[model] === 'object') ? dict[model].price : dict[model]) : dict;
+            // Special case: Switches may have multiple model+qty rows
+            if (feature === 'Switches' && featureUI['Switches']?.multi?.length) {
+              const dictSwitch = pricing.features['Switches'];
+              featureUI['Switches'].multi.forEach(r => {
+                const m = r.select.value;
+                const u = (dictSwitch[m] && typeof dictSwitch[m] === 'object') ? dictSwitch[m].price : dictSwitch[m];
+                const q = Math.max(1, parseInt(r.qty.value,10) || 0);
+                const p = u * q;
+                totalPrice += p;
+                featureRows.push(`
+                  <tr>
+                    <td class="px-4 py-2 border-b border-gray-200">Switches (${m}, ${q})</td>
+                    <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(u)}</td>
+                    <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(p)}</td>
+                  </tr>`);
+              });
+              continue; // proceed to next feature
+            }
+            const qm = pricing?.meta?.quantityModes || {};
+            const roomsNow = parseInt(document.getElementById('numRooms').value,10) || 1;
+            const quantity = (qm[feature] === 'perRoom') ? roomsNow : Math.max(1, parseInt(featureUI[feature].qty.value,10) || 0);
+            let labelName = feature + (model ? ` (${model}, ${quantity})` : ` (${quantity})`);
+            if (qm[feature] === 'perRoom') labelName += ' (per room)';
+            const featurePrice = unitPrice * quantity;
+            totalPrice += featurePrice;
+            featureRows.push(`
+              <tr>
+                <td class="px-4 py-2 border-b border-gray-200">${labelName}</td>
+                <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(unitPrice)}</td>
+                <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(featurePrice)}</td>
+              </tr>`);
+          }
+
+          // Cable Work pricing
+          const quantities = getSelectedQuantities();
+          const totalItems = Object.entries(quantities)
+            .filter(([name]) => name !== 'Switches')
+            .reduce((sum, [,qty]) => sum + qty, 0);
+          const cab = (pricing.meta && pricing.meta.settings && pricing.meta.settings.cablePatching) ? pricing.meta.settings.cablePatching : SETTINGS_FALLBACK.cablePatching;
+          const label = cab.label || 'Cable patching both ends';
+          const cableHours = totalItems * cab.endsPerItem * cab.hoursPerEnd;
+          const cableCost = cableHours * hourlyRate;
+          totalPrice += cableCost;
+          cableRow = `<tr>
+              <td class="px-4 py-2 border-b border-gray-200">${label} (${cableHours.toFixed(2)} hrs)</td>
+              <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(hourlyRate)}</td>
+              <td class="px-4 py-2 border-b border-gray-200">${CURRENCY_FMT.format(cableCost)}</td>
+          </tr>`;
+
+          const offerHtml = `
+              <div class="bg-white shadow rounded p-6 mt-4">
+                  <h2 class="text-xl font-bold mb-4">Offer Summary for ${companyName}</h2>
+                  <div class="overflow-x-auto">
+                      <table class="min-w-full divide-y divide-gray-200">
+                          <thead>
+                              <tr> 
+                                  <th class="bg-gray-50 px-4 py-2 text-left">Item</th>
+                                  <th class="bg-gray-50 px-4 py-2 text-left">Unit Price</th>
+                                  <th class="bg-gray-50 px-4 py-2 text-left">Total Price</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              ${roomRows.join('')}
+                              ${featureRows.join('')}
+                              ${cableRow}
+                              <tr>
+                                  <td colspan="2" class="px-4 py-2 text-right font-bold">Grand Total</td>
+                                  <td class="px-4 py-2 font-bold">${CURRENCY_FMT.format(totalPrice)}</td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          `;
+
+          document.getElementById('offerResult').innerHTML = offerHtml;
+        });
+
+    </script>
+</body>
+</html>

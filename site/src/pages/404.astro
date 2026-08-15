@@ -1,0 +1,48 @@
+---
+import Base from '../layouts/Base.astro';
+import { getDict, langFromUrl, localizedPath, type Lang } from '../i18n';
+
+/** Cloudflare Pages serves this for any unmatched path, in either language. */
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+
+const copy = {
+  el: {
+    title: 'Η σελίδα δεν βρέθηκε',
+    text: 'Η σελίδα που ζητήσατε δεν υπάρχει ή έχει μετακινηθεί.',
+    cta: 'Επιστροφή στην αρχική',
+  },
+  en: {
+    title: 'Page not found',
+    text: 'The page you asked for does not exist or has moved.',
+    cta: 'Back to home',
+  },
+}[lang];
+---
+
+<Base title={`404 — ${copy.title} | ${t.meta.siteName}`} description={copy.text}>
+  <section class="section">
+    <div class="container notfound">
+      <p class="notfound__code" aria-hidden="true">404</p>
+      <h1 class="section-title">{copy.title}</h1>
+      <p class="section-lead mx-auto">{copy.text}</p>
+      <p class="mt-6">
+        <a class="btn btn--primary" href={localizedPath('/', lang)}>{copy.cta}</a>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .notfound { text-align: center; padding-block: clamp(2rem, 8vw, 5rem); }
+  .notfound__code {
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 14vw, 7rem);
+    font-weight: 700;
+    line-height: 1;
+    /* Large display text, so WCAG's 3:1 threshold applies; 0.8 alpha clears it
+       in both themes while still reading as a soft background numeral. */
+    color: hsl(var(--primary) / 0.8);
+  }
+  .notfound .section-lead { margin-inline: auto; }
+</style>

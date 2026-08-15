@@ -1,0 +1,41 @@
+---
+import { getDict, langFromUrl, localizedPath, type Lang } from '../i18n';
+import { clients } from '../data/site';
+import Tabs from './Tabs.astro';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+const p = (path: string) => localizedPath(path, lang);
+
+const panels = [
+  { id: 'web', label: t.clients.tabs.web, items: clients.web },
+  { id: 'infra', label: t.clients.tabs.infra, items: clients.infra },
+  { id: 'security', label: t.clients.tabs.security, items: clients.security },
+  { id: 'telephony', label: t.clients.tabs.telephony, items: clients.telephony },
+  { id: 'iptv', label: t.clients.tabs.iptv, items: clients.iptv },
+];
+---
+
+<section class="section" id="clients">
+  <div class="container">
+    <header class="section-head reveal">
+      <p class="eyebrow">{t.clients.eyebrow}</p>
+      <h2 class="section-title">{t.clients.title}</h2>
+      <p class="section-lead">{t.clients.lead}</p>
+    </header>
+
+    <div class="reveal">
+      <Tabs panels={panels} idPrefix="clients" />
+    </div>
+
+    <p class="mt-6">
+      <a class="btn btn--outline" href={p('/projects')}>
+        {t.projects.viewAll}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </a>
+    </p>
+  </div>
+</section>

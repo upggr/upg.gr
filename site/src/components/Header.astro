@@ -1,0 +1,284 @@
+---
+import { getDict, langFromUrl, localizedPath, alternatePath, type Lang } from '../i18n';
+import Logo from './Logo.astro';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+const other: Lang = lang === 'el' ? 'en' : 'el';
+const altHref = alternatePath(Astro.url, other);
+const p = (path: string) => localizedPath(path, lang);
+
+const here = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isCurrent = (href: string) => (href.replace(/\/+$/, '') || '/') === here;
+
+const links = [
+  { href: p('/'), label: t.nav.home },
+  { href: p('/#services'), label: t.nav.services },
+  { href: p('/cybersecurity'), label: t.nav.security },
+  { href: p('/projects'), label: t.nav.projects },
+  { href: p('/products'), label: t.nav.products },
+  { href: p('/#pricing'), label: t.nav.pricing },
+  { href: p('/#contact'), label: t.nav.contact },
+];
+---
+
+<header class="site-header" id="site-header">
+  <div class="container site-header__inner">
+    <a href={p('/')} class="brand" aria-label={t.meta.siteName}>
+      <Logo />
+      <span class="brand__text">
+        <span class="brand__name">UPGRADE</span>
+        <span class="brand__sub">Buy IT</span>
+      </span>
+    </a>
+
+    <nav class="nav-desktop" aria-label={t.nav.menu}>
+      {links.map((l) => (
+        <a href={l.href} class="nav-link" aria-current={isCurrent(l.href) ? 'page' : undefined}>
+          {l.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="header-actions">
+      <a class="lang-switch" href={altHref} hreflang={other} lang={other} title={t.lang.switchTo}>
+        <span class="lang-switch__on">{lang.toUpperCase()}</span>
+        <span class="lang-switch__off">{other.toUpperCase()}</span>
+      </a>
+
+      <button type="button" class="icon-btn" id="theme-toggle"
+              aria-label={t.theme.toggle} title={t.theme.toggle}>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
+      <button type="button" class="icon-btn nav-toggle" id="nav-toggle"
+              aria-label={t.nav.openMenu} aria-expanded="false" aria-controls="mobile-nav">
+        <svg class="icon-burger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+        <svg class="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="mobile-nav" id="mobile-nav" hidden>
+    <nav class="container mobile-nav__list" aria-label={t.nav.menu}>
+      {links.map((l) => (
+        <a href={l.href} class="mobile-nav__link" aria-current={isCurrent(l.href) ? 'page' : undefined}>
+          {l.label}
+        </a>
+      ))}
+      <a class="btn btn--primary btn--block mt-4" href={`mailto:${'help@upg.gr'}`}>
+        {t.hero.ctaPrimary}
+      </a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: hsl(var(--background) / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  @supports not (backdrop-filter: blur(4px)) {
+    .site-header { background: hsl(var(--background)); }
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: var(--nav-h);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: none;
+    min-width: 0;
+  }
+  .brand__text { display: flex; flex-direction: column; line-height: 1; min-width: 0; }
+  .brand__name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+  .brand__sub {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    margin-top: 0.2rem;
+  }
+
+  .nav-desktop { display: none; align-items: center; gap: 1.5rem; min-width: 0; }
+  @media (min-width: 1024px) { .nav-desktop { display: flex; } }
+
+  .nav-link {
+    position: relative;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    padding-block: 0.35rem;
+    white-space: nowrap;
+    transition: color 0.18s ease;
+  }
+  .nav-link:hover { color: hsl(var(--primary)); }
+  .nav-link[aria-current='page'] { color: hsl(var(--foreground)); }
+  .nav-link[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: hsl(var(--primary));
+  }
+
+  .header-actions { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease;
+  }
+  .icon-btn:hover { background: hsl(var(--surface-2)); color: hsl(var(--foreground)); }
+  .icon-btn svg { width: 1.2rem; height: 1.2rem; }
+
+  /* Theme icon swap follows the resolved theme, including system default */
+  .icon-moon { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :global(html:not([data-theme='light'])) .icon-sun { display: none; }
+    :global(html:not([data-theme='light'])) .icon-moon { display: block; }
+  }
+  :global(html[data-theme='dark']) .icon-sun { display: none; }
+  :global(html[data-theme='dark']) .icon-moon { display: block; }
+  :global(html[data-theme='light']) .icon-sun { display: block; }
+  :global(html[data-theme='light']) .icon-moon { display: none; }
+
+  .lang-switch {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .lang-switch__on {
+    padding: 0.35rem 0.5rem;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  .lang-switch__off {
+    padding: 0.35rem 0.5rem;
+    color: hsl(var(--muted-foreground));
+  }
+  .lang-switch:hover .lang-switch__off { color: hsl(var(--foreground)); }
+
+  .nav-toggle { display: inline-flex; }
+  @media (min-width: 1024px) { .nav-toggle { display: none; } }
+  .icon-x { display: none; }
+  .nav-toggle[aria-expanded='true'] .icon-burger { display: none; }
+  .nav-toggle[aria-expanded='true'] .icon-x { display: block; }
+
+  .mobile-nav {
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    max-height: calc(100dvh - var(--nav-h));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .mobile-nav[hidden] { display: none; }
+  @media (min-width: 1024px) { .mobile-nav { display: none !important; } }
+
+  .mobile-nav__list {
+    display: flex;
+    flex-direction: column;
+    padding-block: 0.75rem 1.5rem;
+  }
+  .mobile-nav__link {
+    padding: 0.85rem 0.25rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .mobile-nav__link[aria-current='page'] { color: hsl(var(--primary)); }
+</style>
+
+<script>
+  // Theme toggle — persists an explicit choice, otherwise follows the system.
+  const toggle = document.getElementById('theme-toggle');
+  toggle?.addEventListener('click', () => {
+    const root = document.documentElement;
+    const isDark =
+      root.getAttribute('data-theme') === 'dark' ||
+      (!root.hasAttribute('data-theme') &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = isDark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('upg-theme', next);
+    } catch {}
+  });
+
+  // Mobile navigation
+  const navToggle = document.getElementById('nav-toggle');
+  const mobileNav = document.getElementById('mobile-nav');
+
+  function closeNav() {
+    navToggle?.setAttribute('aria-expanded', 'false');
+    if (mobileNav) mobileNav.hidden = true;
+  }
+
+  navToggle?.addEventListener('click', () => {
+    const open = navToggle.getAttribute('aria-expanded') === 'true';
+    navToggle.setAttribute('aria-expanded', String(!open));
+    if (mobileNav) mobileNav.hidden = open;
+  });
+
+  mobileNav?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('a')) closeNav();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeNav();
+  });
+
+  // Never leave the mobile panel open when the layout switches to desktop
+  const desktop = window.matchMedia('(min-width: 1024px)');
+  desktop.addEventListener('change', (e) => {
+    if (e.matches) closeNav();
+  });
+</script>

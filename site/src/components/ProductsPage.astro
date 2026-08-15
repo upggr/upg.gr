@@ -1,0 +1,141 @@
+---
+import Base from '../layouts/Base.astro';
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import { products } from '../data/products';
+import { site } from '../data/site';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+---
+
+<Base title={t.meta.products.title} description={t.meta.products.description}>
+  <section class="section">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">{t.products.eyebrow}</p>
+        <h1 class="section-title">{t.products.title}</h1>
+        <p class="section-lead">{t.products.lead}</p>
+      </header>
+
+      <div class="products">
+        {products.map((product, i) => {
+          const copy = product[lang];
+          return (
+            <article class="card product reveal">
+              <div class="product__media">
+                <img
+                  src={product.image}
+                  alt={copy.name}
+                  width="800"
+                  height="800"
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              </div>
+
+              <div class="product__body">
+                <h2 class="product__name">{copy.name}</h2>
+                <p class="card__text mt-2">{copy.lead}</p>
+
+                <h3 class="product__specs-title">{t.products.specs}</h3>
+                <ul class="product__specs">
+                  {copy.specs.map((spec) => (
+                    <li>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                      <span>{spec}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div class="product__foot">
+                  <p class="product__price">
+                    <span class="card__text">{t.products.price}</span>
+                    <strong>{product.price}</strong>
+                  </p>
+                  <p class="pill">{t.products.ean}: {product.ean}</p>
+                  <a class="btn btn--primary"
+                     href={`mailto:${site.email}?subject=${encodeURIComponent(copy.name)}`}>
+                    {t.products.ask}
+                  </a>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .products { display: grid; gap: 1.5rem; }
+
+  .product { display: grid; gap: 1.5rem; align-items: start; }
+  @media (min-width: 52rem) {
+    .product { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); gap: 2rem; }
+  }
+
+  .product__media {
+    background: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .product__media img { width: 100%; height: auto; max-width: 18rem; object-fit: contain; }
+
+  .product__body { min-width: 0; }
+  .product__name { font-size: clamp(1.2rem, 3vw, 1.5rem); }
+
+  .product__specs-title {
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    margin-top: 1.5rem;
+  }
+  .product__specs {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    display: grid;
+    gap: 0.55rem;
+    font-size: 0.9rem;
+  }
+  .product__specs li {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .product__specs svg {
+    width: 1rem; height: 1rem; flex: none;
+    margin-top: 0.25rem;
+    color: hsl(var(--success));
+  }
+
+  .product__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid hsl(var(--border));
+  }
+  .product__price { display: flex; align-items: baseline; gap: 0.4rem; }
+  .product__price strong {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: hsl(var(--primary-text));
+  }
+  .product__foot .btn { margin-inline-start: auto; }
+  @media (max-width: 30rem) {
+    .product__foot .btn { margin-inline-start: 0; width: 100%; }
+  }
+</style>

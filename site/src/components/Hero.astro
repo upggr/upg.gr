@@ -1,0 +1,178 @@
+---
+import { getDict, langFromUrl, localizedPath, type Lang } from '../i18n';
+import { site } from '../data/site';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+const p = (path: string) => localizedPath(path, lang);
+---
+
+<section class="hero">
+  <div class="hero__glow" aria-hidden="true"></div>
+  <div class="container hero__inner">
+    <p class="pill pill--primary hero__badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m9 12 2 2 4-4" />
+        <circle cx="12" cy="12" r="9" />
+      </svg>
+      {t.hero.badge}
+    </p>
+
+    <h1 class="hero__title">{t.hero.title}</h1>
+    <p class="hero__lead">{t.hero.lead}</p>
+
+    <div class="hero__cta">
+      <a class="btn btn--primary" href={`mailto:${site.email}`}>
+        {t.hero.ctaPrimary}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </a>
+      <a class="btn btn--outline" href={p('/#pricing')}>{t.hero.ctaSecondary}</a>
+    </div>
+
+    <ul class="hero__pillars">
+      {t.hero.pillars.map((pillar) => (
+        <li class="hero__pillar">
+          <span class="hero__dot" aria-hidden="true"></span>
+          <span>
+            <strong>{pillar.title}</strong>
+            <span class="card__text">{pillar.text}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <div class="container">
+    <dl class="hero__stats">
+      {t.hero.stats.map((s) => (
+        <div class="hero__stat">
+          <dt class="hero__stat-value">{s.value}</dt>
+          <dd class="hero__stat-label">{s.label}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden; /* contains the glow, prevents sideways scroll */
+    padding-block: clamp(3rem, 8vw, 6rem) clamp(2rem, 5vw, 3.5rem);
+  }
+
+  .hero__glow {
+    position: absolute;
+    z-index: -1;
+    top: -35%;
+    left: 50%;
+    translate: -50% 0;
+    width: min(70rem, 130%);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      hsl(var(--primary) / 0.16) 0%,
+      hsl(var(--primary) / 0.05) 45%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  .hero__inner { max-width: 52rem; }
+
+  .hero__badge { margin-bottom: 1.25rem; }
+  .hero__badge svg { width: 0.95rem; height: 0.95rem; }
+
+  .hero__title {
+    font-size: clamp(2.1rem, 6vw, 3.75rem);
+    letter-spacing: -0.03em;
+  }
+
+  .hero__lead {
+    margin-top: 1.25rem;
+    font-size: clamp(1rem, 1.9vw, 1.15rem);
+    color: hsl(var(--muted-foreground));
+    max-width: 46rem;
+  }
+
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+  /* On the narrowest phones let the buttons own the row instead of squeezing */
+  @media (max-width: 26rem) {
+    .hero__cta { flex-direction: column; align-items: stretch; }
+    .hero__cta .btn { width: 100%; }
+  }
+
+  .hero__pillars {
+    list-style: none;
+    padding: 0;
+    margin-top: 2.75rem;
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  }
+  .hero__pillar {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .hero__pillar strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    margin-bottom: 0.15rem;
+  }
+  .hero__pillar .card__text { font-size: 0.875rem; }
+  .hero__dot {
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-top: 0.5rem;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
+  }
+
+  .hero__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: clamp(2.5rem, 6vw, 4rem) 0 0;
+    background: hsl(var(--border));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  @media (min-width: 48rem) {
+    .hero__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  .hero__stat {
+    background: hsl(var(--card));
+    padding: clamp(1rem, 3vw, 1.6rem);
+    text-align: center;
+    min-width: 0;
+  }
+  .hero__stat-value {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 4.5vw, 2.5rem);
+    font-weight: 700;
+    color: hsl(var(--primary-text));
+    line-height: 1.1;
+  }
+  .hero__stat-label {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+  }
+</style>

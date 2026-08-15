@@ -1,0 +1,117 @@
+---
+import Base from '../layouts/Base.astro';
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import { securityChapters } from '../data/security';
+import { site } from '../data/site';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+const chapters = securityChapters[lang];
+---
+
+<Base title={t.meta.security.title} description={t.meta.security.description}>
+  <section class="section">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">{t.security.eyebrow}</p>
+        <h1 class="section-title">{t.security.title}</h1>
+        <p class="section-lead">{t.security.lead}</p>
+      </header>
+
+      <div class="guide">
+        <aside class="guide__toc">
+          <nav aria-labelledby="toc-title">
+            <h2 class="guide__toc-title" id="toc-title">{t.security.toc}</h2>
+            <ol class="guide__toc-list">
+              {chapters.map((chapter) => (
+                <li><a href={`#${chapter.id}`}>{chapter.title}</a></li>
+              ))}
+            </ol>
+          </nav>
+        </aside>
+
+        <div class="guide__body prose">
+          <p class="guide__intro">{t.security.intro}</p>
+
+          {chapters.map((chapter) => (
+            <section id={chapter.id} class="guide__chapter">
+              <h2>{chapter.title}</h2>
+              {chapter.blocks.map((block) =>
+                block.type === 'p' ? (
+                  <p>{block.text}</p>
+                ) : block.type === 'h3' ? (
+                  <h3>{block.text}</h3>
+                ) : (
+                  <ul>
+                    {block.items.map((item) => <li>{item}</li>)}
+                  </ul>
+                )
+              )}
+            </section>
+          ))}
+
+          <aside class="guide__cta card">
+            <h2 class="card__title">{t.security.ctaTitle}</h2>
+            <p class="card__text mt-2">{t.security.ctaText}</p>
+            <a class="btn btn--primary mt-4" href={`mailto:${site.email}`}>
+              {t.hero.ctaPrimary}
+            </a>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .guide {
+    display: grid;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  @media (min-width: 62rem) {
+    .guide { grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); gap: 3rem; }
+    .guide__toc {
+      position: sticky;
+      top: calc(var(--nav-h) + 1.5rem);
+      max-height: calc(100dvh - var(--nav-h) - 3rem);
+      overflow-y: auto;
+    }
+  }
+
+  .guide__toc {
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-lg);
+    background: hsl(var(--card));
+    padding: 1.25rem;
+    min-width: 0;
+  }
+  .guide__toc-title {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 0.85rem;
+  }
+  .guide__toc-list {
+    margin: 0;
+    padding-inline-start: 1.1rem;
+    display: grid;
+    gap: 0.55rem;
+    font-size: 0.9rem;
+  }
+  .guide__toc-list a { color: hsl(var(--foreground) / 0.85); }
+  .guide__toc-list a:hover { color: hsl(var(--primary)); text-decoration: underline; }
+
+  .guide__body { max-width: 72ch; min-width: 0; }
+  .guide__intro {
+    font-size: 1.05rem;
+    color: hsl(var(--muted-foreground));
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .guide__chapter { scroll-margin-top: calc(var(--nav-h) + 1.5rem); }
+  .guide__chapter + .guide__chapter { margin-top: 1rem; }
+
+  .guide__cta { margin-top: 3rem; }
+</style>

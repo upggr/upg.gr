@@ -1,0 +1,135 @@
+---
+import { getDict, langFromUrl, localizedPath, type Lang } from '../i18n';
+import { site } from '../data/site';
+import Logo from './Logo.astro';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+const p = (path: string) => localizedPath(path, lang);
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="footer-brand">
+      <div class="brand">
+        <Logo />
+        <span class="brand__name">UPGRADE</span>
+      </div>
+      <p class="card__text mt-4">{t.footer.tagline}</p>
+      <p class="pill pill--primary mt-4">{t.footer.iso}</p>
+    </div>
+
+    <div>
+      <h2 class="footer-heading">{t.footer.solutions}</h2>
+      <ul class="footer-list">
+        <li><a href={p('/#services')}>{t.nav.services}</a></li>
+        <li><a href={p('/cybersecurity')}>{t.nav.security}</a></li>
+        <li><a href={p('/projects')}>{t.nav.projects}</a></li>
+        <li><a href={p('/products')}>{t.nav.products}</a></li>
+        <li><a href={p('/#pricing')}>{t.nav.pricing}</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="footer-heading">{t.footer.company}</h2>
+      <ul class="footer-list">
+        <li><a href={p('/#team')}>{t.nav.team}</a></li>
+        <li><a href={p('/#clients')}>{t.nav.clients}</a></li>
+        <li>
+          <a href={site.sister.url} rel="noopener">{site.sister.name} ({t.footer.sister})</a>
+        </li>
+        <li><a href={site.portfolioUrl} rel="noopener">Portfolio</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="footer-heading">{t.footer.contact}</h2>
+      <ul class="footer-list">
+        <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
+        {site.phones.map((ph) => (
+          <li><a href={`tel:${ph.href}`}>{ph.display}</a></li>
+        ))}
+      </ul>
+      <ul class="footer-social" aria-label={t.footer.social}>
+        {site.social.map((s) => (
+          <li>
+            <a href={s.href} rel="noopener me" target="_blank" class="pill">{s.name}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+
+  <div class="container footer-bottom">
+    <p>© {year} {site.legalName}. {t.footer.rights}</p>
+    <p><a href={site.sister.url} rel="noopener">buy-it.gr</a></p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: auto;
+    background: hsl(var(--surface-2) / 0.45);
+    border-top: 1px solid hsl(var(--border));
+    padding-top: clamp(2.5rem, 6vw, 4rem);
+  }
+
+  .footer-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  }
+  .footer-brand { max-width: 32ch; }
+
+  .brand { display: inline-flex; align-items: center; gap: 0.6rem; }
+  .brand__name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .footer-heading {
+    font-size: 0.95rem;
+    margin-bottom: 0.9rem;
+  }
+  .footer-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    font-size: 0.9rem;
+  }
+  .footer-list a {
+    color: hsl(var(--muted-foreground));
+    transition: color 0.18s ease;
+    overflow-wrap: break-word;
+  }
+  .footer-list a:hover { color: hsl(var(--primary)); }
+
+  .footer-social {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+  .footer-social a { transition: color 0.18s ease, border-color 0.18s ease; }
+  .footer-social a:hover { color: hsl(var(--primary)); border-color: hsl(var(--primary)); }
+
+  .footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: clamp(2rem, 5vw, 3rem);
+    padding-block: 1.25rem;
+    border-top: 1px solid hsl(var(--border));
+    font-size: 0.85rem;
+    color: hsl(var(--muted-foreground));
+  }
+  .footer-bottom a:hover { color: hsl(var(--primary)); }
+</style>

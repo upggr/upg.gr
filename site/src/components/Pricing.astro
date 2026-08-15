@@ -1,0 +1,120 @@
+---
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import { site } from '../data/site';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+---
+
+<section class="section section--alt" id="pricing">
+  <div class="container">
+    <header class="section-head reveal">
+      <p class="eyebrow">{t.pricing.eyebrow}</p>
+      <h2 class="section-title">{t.pricing.title}</h2>
+      <p class="section-lead">{t.pricing.lead}</p>
+    </header>
+
+    <div class="pricing-grid">
+      {t.pricing.plans.map((plan) => (
+        <article class={`card pricing-card reveal${plan.featured ? ' pricing-card--featured' : ''}`}>
+          <h3 class="card__title">{plan.name}</h3>
+          <p class="pricing-card__price">
+            <span class="pricing-card__from">{t.pricing.from}</span>
+            <span class="pricing-card__amount">{plan.price}</span>
+            <span class="pricing-card__unit">{plan.unit}</span>
+          </p>
+          <p class="card__text">{plan.text}</p>
+          <ul class="pricing-card__features">
+            {plan.features.map((f) => (
+              <li>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+          <a class={`btn btn--block pricing-card__cta ${plan.featured ? 'btn--primary' : 'btn--outline'}`}
+             href={`mailto:${site.email}?subject=${encodeURIComponent(plan.name)}`}>
+            {t.pricing.cta}
+          </a>
+        </article>
+      ))}
+    </div>
+
+    <p class="pricing-note card__text reveal">{t.pricing.note}</p>
+  </div>
+</section>
+
+<style>
+  .pricing-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    align-items: start;
+  }
+
+  .pricing-card { display: flex; flex-direction: column; height: 100%; }
+  .pricing-card--featured {
+    border-color: hsl(var(--primary) / 0.55);
+    box-shadow: var(--shadow);
+  }
+
+  .pricing-card__price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin: 0.85rem 0 0.75rem;
+  }
+  .pricing-card__from {
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+  }
+  .pricing-card__amount {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.15rem);
+    font-weight: 700;
+    line-height: 1;
+    color: hsl(var(--primary-text));
+  }
+  .pricing-card__unit {
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .pricing-card__features {
+    list-style: none;
+    padding: 0;
+    margin: 1.1rem 0 0;
+    display: grid;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+  }
+  .pricing-card__features li {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    color: hsl(var(--foreground) / 0.88);
+    min-width: 0;
+  }
+  .pricing-card__features svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+    margin-top: 0.25rem;
+    color: hsl(var(--success));
+  }
+
+  /* Push the CTA to the bottom so cards line up regardless of feature count.
+     The auto margin needs a floor so it never sits flush against the list. */
+  .pricing-card__features { margin-bottom: 1.5rem; }
+  .pricing-card__cta { margin-top: auto; }
+
+  .pricing-note {
+    margin-top: 1.5rem;
+    font-size: 0.85rem;
+    max-width: 70ch;
+  }
+</style>

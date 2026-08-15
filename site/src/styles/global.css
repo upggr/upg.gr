@@ -1,0 +1,500 @@
+/* ==========================================================================
+   UPGRADE — design system
+   Tokens mirror the sister site buy-it.gr (Space Grotesk display / Inter body,
+   primary hsl(221 83% 53%)), extended with a dark palette.
+   ========================================================================== */
+
+/* ---- Fonts (self-hosted; unicode-range scoped so only used subsets load) ---
+   Space Grotesk ships no Greek glyphs, so Manrope (geometric, Greek-complete)
+   carries Greek display text and Space Grotesk carries Latin. Declaring
+   Space Grotesk first in --font-display means Latin runs use it and Greek runs
+   fall through to Manrope automatically, per-character.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+  font-weight: 100 900; font-display: swap; font-style: normal;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-latin-ext.woff2') format('woff2');
+  font-weight: 100 900; font-display: swap; font-style: normal;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter-greek.woff2') format('woff2');
+  font-weight: 100 900; font-display: swap; font-style: normal;
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+    U+03A3-03FF;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+  font-weight: 300 700; font-display: swap; font-style: normal;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/space-grotesk-latin-ext.woff2') format('woff2');
+  font-weight: 300 700; font-display: swap; font-style: normal;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('/fonts/manrope-greek.woff2') format('woff2');
+  font-weight: 400 800; font-display: swap; font-style: normal;
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
+    U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('/fonts/manrope-latin.woff2') format('woff2');
+  font-weight: 400 800; font-display: swap; font-style: normal;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('/fonts/manrope-latin-ext.woff2') format('woff2');
+  font-weight: 400 800; font-display: swap; font-style: normal;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---- Tokens -------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Brand — shared with buy-it.gr */
+  --primary: 221 83% 53%;
+  --primary-hover: 221 83% 46%;
+  --primary-foreground: 210 40% 98%;
+  /* Brand blue is used as a *fill* at 53%; as small text on a tinted chip it
+     only reaches ~4.2:1, so accent text darkens to clear WCAG AA. */
+  --primary-text: 221 83% 45%;
+
+  /* Surfaces */
+  --background: 210 20% 98%;
+  --surface: 0 0% 100%;
+  --surface-2: 210 40% 96.1%;
+  --card: 0 0% 100%;
+
+  /* Text — muted sits at 42% L so it clears WCAG AA (>=4.5:1) on every
+     surface it is used on, including the tinted --surface-2 sections. */
+  --foreground: 222 47% 11%;
+  --muted-foreground: 215.4 16.3% 42%;
+
+  /* Lines */
+  --border: 214.3 31.8% 91.4%;
+  --ring: 221 83% 53%;
+
+  /* Status */
+  --success: 142 71% 40%;
+  --warning: 38 92% 45%;
+
+  /* Shape */
+  --radius: 0.5rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
+  --shadow: 0 4px 12px -2px hsl(222 47% 11% / 0.08), 0 2px 4px -2px hsl(222 47% 11% / 0.04);
+  --shadow-lg: 0 18px 40px -12px hsl(222 47% 11% / 0.16);
+
+  /* Type */
+  --font-display: 'Space Grotesk', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Layout */
+  --container: 78rem;
+  --gutter: clamp(1rem, 4vw, 2rem);
+  --nav-h: 4.5rem;
+}
+
+/* Dark: explicit choice, and system default when nothing is stamped */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --primary: 217 91% 62%;
+    --primary-hover: 217 91% 70%;
+    --primary-foreground: 222 47% 8%;
+    --primary-text: 217 91% 62%;
+
+    --background: 222 47% 7%;
+    --surface: 222 40% 10%;
+    --surface-2: 222 33% 14%;
+    --card: 222 40% 10%;
+
+    --foreground: 210 40% 96%;
+    --muted-foreground: 215 20% 68%;
+
+    --border: 215 27% 20%;
+    --ring: 217 91% 62%;
+
+    --success: 142 60% 52%;
+    --warning: 38 92% 60%;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
+    --shadow: 0 4px 14px -2px hsl(0 0% 0% / 0.5);
+    --shadow-lg: 0 20px 44px -12px hsl(0 0% 0% / 0.65);
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --primary: 217 91% 62%;
+  --primary-hover: 217 91% 70%;
+  --primary-foreground: 222 47% 8%;
+  --primary-text: 217 91% 62%;
+
+  --background: 222 47% 7%;
+  --surface: 222 40% 10%;
+  --surface-2: 222 33% 14%;
+  --card: 222 40% 10%;
+
+  --foreground: 210 40% 96%;
+  --muted-foreground: 215 20% 68%;
+
+  --border: 215 27% 20%;
+  --ring: 217 91% 62%;
+
+  --success: 142 60% 52%;
+  --warning: 38 92% 60%;
+
+  --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.4);
+  --shadow: 0 4px 14px -2px hsl(0 0% 0% / 0.5);
+  --shadow-lg: 0 20px 44px -12px hsl(0 0% 0% / 0.65);
+}
+
+/* ---- Reset --------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 1rem);
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Kill horizontal overflow at the root — nothing may scroll the page sideways */
+  overflow-x: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+img, picture, video, canvas, svg, iframe {
+  display: block;
+  max-width: 100%;
+}
+img, video { height: auto; }
+
+input, button, textarea, select { font: inherit; color: inherit; }
+
+/* Never let a long unbroken string (URL, email, Greek compound) push the layout */
+p, li, h1, h2, h3, h4, h5, h6, dd, dt, td, th, figcaption, blockquote, a, span {
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+p { text-wrap: pretty; }
+
+a { color: inherit; text-decoration: none; }
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.25);
+  color: hsl(var(--foreground));
+}
+
+/* ---- Layout primitives --------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section { padding-block: clamp(3.5rem, 8vw, 6.5rem); }
+.section--tight { padding-block: clamp(2.5rem, 5vw, 4rem); }
+.section--alt {
+  background: hsl(var(--surface-2) / 0.45);
+  border-block: 1px solid hsl(var(--border));
+}
+
+.stack > * + * { margin-top: var(--stack-gap, 1rem); }
+
+.grid { display: grid; gap: var(--grid-gap, 1.5rem); }
+.grid--2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+.grid--3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.grid--4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 50%;
+  translate: -50% -120%;
+  z-index: 200;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.7rem 1.2rem;
+  border-radius: 0 0 var(--radius) var(--radius);
+  font-weight: 600;
+  transition: translate 0.18s ease;
+}
+.skip-link:focus-visible { translate: -50% 0; }
+
+/* ---- Section headers ----------------------------------------------------- */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--primary-text));
+}
+.eyebrow::before {
+  content: '';
+  width: 1.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: hsl(var(--primary));
+}
+
+.section-title {
+  font-size: clamp(1.75rem, 4vw, 2.6rem);
+  margin-top: 0.75rem;
+}
+.section-lead {
+  color: hsl(var(--muted-foreground));
+  font-size: clamp(1rem, 1.6vw, 1.075rem);
+  max-width: 60ch;
+  margin-top: 0.85rem;
+}
+.section-head { margin-bottom: clamp(2rem, 4vw, 3rem); }
+
+/* ---- Buttons ------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.875rem;
+  padding: 0.7rem 1.35rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.18s ease, color 0.18s ease,
+              border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn svg { width: 1.125rem; height: 1.125rem; flex: none; }
+
+.btn--primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: var(--shadow-sm);
+}
+.btn--primary:hover { background: hsl(var(--primary-hover)); box-shadow: var(--shadow); }
+
+.btn--outline {
+  border-color: hsl(var(--border));
+  background: hsl(var(--surface));
+  color: hsl(var(--foreground));
+}
+.btn--outline:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.btn--ghost { background: transparent; color: hsl(var(--muted-foreground)); }
+.btn--ghost:hover { background: hsl(var(--surface-2)); color: hsl(var(--foreground)); }
+
+.btn--sm { min-height: 2.25rem; padding: 0.4rem 0.85rem; font-size: 0.85rem; }
+.btn--block { width: 100%; }
+
+/* ---- Cards --------------------------------------------------------------- */
+.card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  min-width: 0; /* grid children must be allowed to shrink */
+}
+.card--hover:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: hsl(var(--primary) / 0.4);
+}
+.card__title { font-size: 1.15rem; }
+.card__text { color: hsl(var(--muted-foreground)); font-size: 0.95rem; }
+
+.icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius);
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  margin-bottom: 1rem;
+}
+.icon-badge svg { width: 1.4rem; height: 1.4rem; }
+
+/* ---- Pills / tags -------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill--primary {
+  /* Opaque tint rather than an alpha wash: the pill is used on both the plain
+     background and the tinted --surface-2, and a translucent fill would let
+     the surface underneath change its effective contrast. */
+  background: color-mix(in srgb, hsl(var(--primary)) 12%, hsl(var(--surface)));
+  border-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--primary-text));
+}
+
+/* ---- Tables -------------------------------------------------------------- */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background: hsl(var(--card));
+}
+.table-wrap table { width: 100%; border-collapse: collapse; min-width: 34rem; }
+.table-wrap th, .table-wrap td {
+  padding: 0.85rem 1rem;
+  text-align: start;
+  border-bottom: 1px solid hsl(var(--border));
+  font-size: 0.925rem;
+}
+.table-wrap th {
+  font-family: var(--font-display);
+  font-weight: 700;
+  background: hsl(var(--surface-2) / 0.6);
+  white-space: nowrap;
+}
+.table-wrap tr:last-child td { border-bottom: 0; }
+
+/* ---- Prose (long-form pages) --------------------------------------------- */
+.prose { max-width: 68ch; }
+.prose > * + * { margin-top: 1.1rem; }
+.prose h2 { font-size: clamp(1.4rem, 3vw, 1.9rem); margin-top: 2.5rem; }
+.prose h3 { font-size: clamp(1.15rem, 2.4vw, 1.35rem); margin-top: 2rem; }
+.prose p, .prose li { color: hsl(var(--foreground) / 0.88); }
+.prose ul, .prose ol { padding-inline-start: 1.35rem; }
+.prose li + li { margin-top: 0.4rem; }
+.prose strong { font-weight: 650; }
+.prose a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---- Utilities ----------------------------------------------------------- */
+.text-muted { color: hsl(var(--muted-foreground)); }
+.text-center { text-align: center; }
+.mx-auto { margin-inline: auto; }
+.flex-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mt-8 { margin-top: 2rem; }
+
+/* ---- Reveal on scroll ----------------------------------------------------
+   Content is visible by default and only ever *animated* into place, so a
+   failed script, a stalled observer, or an unsupported browser can never
+   leave the page blank.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  /* Modern path: scroll-driven, no JS involved at all.
+     The range finishes while the element is still entering, so anything at or
+     above the fold is already fully opaque and never animates back out. */
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 90%;
+    }
+  }
+
+  /* Fallback path: only hide when JS has confirmed it can observe them. */
+  @supports not (animation-timeline: view()) {
+    .js-reveal .reveal {
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .js-reveal .reveal.is-visible { opacity: 1; transform: none; }
+  }
+}
+
+@keyframes reveal-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}

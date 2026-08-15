@@ -1,0 +1,18 @@
+---
+/**
+ * Runs before first paint: applies the saved (or system) theme so there is no
+ * flash of the wrong palette, and marks the document as JS-enabled.
+ * Kept inline and tiny on purpose.
+ */
+---
+<script is:inline>
+  (function () {
+    try {
+      var stored = localStorage.getItem('upg-theme');
+      if (stored === 'dark' || stored === 'light') {
+        document.documentElement.setAttribute('data-theme', stored);
+      }
+    } catch (e) {}
+    document.documentElement.classList.add('js');
+  })();
+</script>

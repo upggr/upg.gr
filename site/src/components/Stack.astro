@@ -1,0 +1,27 @@
+---
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import Tabs from './Tabs.astro';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+
+const panels = [
+  { id: 'partners', label: t.stack.tabs.partners, items: t.stack.groups.partners },
+  { id: 'distro', label: t.stack.tabs.distro, items: t.stack.groups.distro },
+  { id: 'web', label: t.stack.tabs.web, items: t.stack.groups.web },
+  { id: 'infra', label: t.stack.tabs.infra, items: t.stack.groups.infra },
+];
+---
+
+<section class="section section--alt" id="stack">
+  <div class="container">
+    <header class="section-head reveal">
+      <p class="eyebrow">{t.stack.eyebrow}</p>
+      <h2 class="section-title">{t.stack.title}</h2>
+      <p class="section-lead">{t.stack.lead}</p>
+    </header>
+    <div class="reveal">
+      <Tabs panels={panels} idPrefix="stack" />
+    </div>
+  </div>
+</section>

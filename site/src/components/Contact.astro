@@ -1,0 +1,161 @@
+---
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import { site } from '../data/site';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+
+const offices = site.offices.map((office, i) => ({ ...office, ...t.contact.offices[i] }));
+---
+
+<section class="section section--alt" id="contact">
+  <div class="container">
+    <header class="section-head reveal">
+      <p class="eyebrow">{t.contact.eyebrow}</p>
+      <h2 class="section-title">{t.contact.title}</h2>
+      <p class="section-lead">{t.contact.lead}</p>
+    </header>
+
+    <div class="contact-grid">
+      <article class="card reveal">
+        <span class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <path d="m22 7-10 6L2 7" />
+          </svg>
+        </span>
+        <h3 class="card__title">{t.contact.emailLabel}</h3>
+        <p class="card__text mt-2">{t.contact.emailHint}</p>
+        <a class="contact-link" href={`mailto:${site.email}`}>{site.email}</a>
+      </article>
+
+      <article class="card reveal">
+        <span class="icon-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.09 4.18 2 2 0 0 1 4.08 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+        </span>
+        <h3 class="card__title">{t.contact.phoneLabel}</h3>
+        <p class="card__text mt-2">{t.contact.phoneHint}</p>
+        {site.phones.map((ph) => (
+          <a class="contact-link" href={`tel:${ph.href}`}>{ph.display}</a>
+        ))}
+      </article>
+    </div>
+
+    <h3 class="offices-title reveal">{t.contact.officesTitle}</h3>
+    <div class="contact-grid">
+      {offices.map((office) => (
+        <article class="card office-card reveal">
+          <div class="office-card__head">
+            <div>
+              <h4 class="card__title">{office.name}</h4>
+              <p class="card__text">{office.note}</p>
+            </div>
+            <a class="btn btn--outline btn--sm" href={office.maps} target="_blank" rel="noopener">
+              {t.contact.openInMaps}
+            </a>
+          </div>
+          <div class="map" data-map-src={office.embed}>
+            <button type="button" class="map__load" data-map-load>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <span>{t.contact.mapLabel}</span>
+            </button>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  }
+
+  .contact-link {
+    display: block;
+    margin-top: 0.5rem;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: hsl(var(--primary-text));
+    overflow-wrap: break-word;
+  }
+  .contact-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  .offices-title {
+    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+    margin: clamp(2rem, 5vw, 3rem) 0 1.25rem;
+  }
+
+  .office-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .map {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: hsl(var(--surface-2));
+    border: 1px solid hsl(var(--border));
+  }
+  .map :global(iframe) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .map__load {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .map__load:hover { color: hsl(var(--primary)); background: hsl(var(--primary) / 0.06); }
+  .map__load svg { width: 1.75rem; height: 1.75rem; }
+</style>
+
+<script>
+  // Maps load on demand: no third-party iframe cost until the visitor asks.
+  document.querySelectorAll<HTMLElement>('[data-map-load]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const wrap = button.closest<HTMLElement>('.map');
+      const src = wrap?.dataset.mapSrc;
+      if (!wrap || !src) return;
+      const iframe = document.createElement('iframe');
+      iframe.src = src;
+      iframe.loading = 'lazy';
+      iframe.referrerPolicy = 'no-referrer-when-downgrade';
+      iframe.title = button.textContent?.trim() || 'Map';
+      iframe.allowFullscreen = true;
+      wrap.replaceChildren(iframe);
+    });
+  });
+</script>

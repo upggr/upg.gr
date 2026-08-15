@@ -1,0 +1,51 @@
+---
+import { getDict, langFromUrl, localizedPath, type Lang } from '../i18n';
+import { site } from '../data/site';
+import projects from '../data/projects.json';
+import ProjectCard from './ProjectCard.astro';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+const p = (path: string) => localizedPath(path, lang);
+
+// Showcase the ones that have a screenshot and a live link.
+const featured = projects.filter((x) => x.thumb && x.url).slice(0, 6);
+---
+
+<section class="section section--alt" id="projects">
+  <div class="container">
+    <header class="section-head reveal">
+      <p class="eyebrow">{t.projects.eyebrow}</p>
+      <h2 class="section-title">{t.projects.title}</h2>
+      <p class="section-lead">{t.projects.lead}</p>
+    </header>
+
+    <div class="grid grid--3">
+      {featured.map((project, i) => (
+        <div class="reveal">
+          <ProjectCard
+            title={project.title}
+            url={project.url}
+            tags={project.tags}
+            thumb={project.thumb}
+            visitLabel={t.projects.visit}
+            eager={i < 3}
+          />
+        </div>
+      ))}
+    </div>
+
+    <div class="flex-row mt-8">
+      <a class="btn btn--primary" href={p('/projects')}>
+        {t.projects.viewAll}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </a>
+      <a class="btn btn--ghost" href={site.portfolioUrl} target="_blank" rel="noopener">
+        {t.projects.fromPortfolio}
+      </a>
+    </div>
+  </div>
+</section>

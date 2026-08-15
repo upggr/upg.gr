@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pricing>
+  <settings>
+    <!-- Currency / locale used for formatting prices -->
+    <currency code="EUR" locale="el-GR"/>
+    <!-- Default hourly rate used to seed the input field -->
+    <labor hourlyRate="50"/>
+    <cablePatching label="Cable patching both ends"
+                   endsPerItem="2"
+                   hoursPerEnd="0.20"/>
+  </settings>
+  <!-- Base price per room (multiplied by Number of Rooms) -->
+  <rooms basePrice="100"/>
+  <features>
+    <!-- quantityMode: manual or perRoom -->
+    <feature name="Firewall" quantityMode="manual" defaultQuantity="1">
+      <model name="Sophos XG" price="1000"/>
+      <model name="Alta Route 10" price="200"/>
+    </feature>
+
+    <feature name="AccessPoints" quantityMode="manual" defaultQuantity="rooms">
+      <model name="Alta Labs AP6W Wi-Fi 6 (Wall mount)" price="120" isnetwork="yes" ispoe="yes"/>
+      <model name="Alta Labs AP6 Wi-Fi 6" price="150" isnetwork="yes" ispoe="yes"/>
+      <model name="Alta Labs AP6 Professional Wi-Fi 6" price="180"/>
+    </feature>
+
+    <feature name="VoIPPhones" quantityMode="perRoom" defaultQuantity="rooms">
+      <model name="FanvilH5W" price="120" isnetwork="yes" ispoe="yes"/>
+      <model name="FanvilH4W" price="100"/>
+    </feature>
+
+    <feature name="TVs" quantityMode="perRoom" defaultQuantity="rooms">
+      <model name="LG TV 42&quot;" price="320"/>
+      <model name="Generic Android TV" price="250"/>
+    </feature>
+    <feature name="Cameras"  quantityMode="manual" defaultQuantity="10" >
+     <model name="tp link vigi wide" price="320" isnetwork="yes" ispoe="yes"/>
+      <model name="tp link vigi normal" price="250"/>
+      </feature>
+          <feature name="Switches" quantityMode="manual" >
+     <model name="48 poe switch" price="800" poeports="48" normalports="0" />
+      <model name="24 poe switch" poeports="16" normalports="8" price="250"/>
+      </feature>
+    <feature name="Computers" price="300" quantityMode="manual" defaultQuantity="0"/>
+  </features>
+</pricing>

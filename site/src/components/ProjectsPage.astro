@@ -1,0 +1,177 @@
+---
+import Base from '../layouts/Base.astro';
+import ProjectCard from './ProjectCard.astro';
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import { site } from '../data/site';
+import projects from '../data/projects.json';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+
+type Category = keyof typeof t.projects.categories;
+
+// Build the filter list from the data, ordered by how much work sits in each.
+const counts = new Map<string, number>();
+for (const project of projects) {
+  for (const tab of project.tabs) counts.set(tab, (counts.get(tab) ?? 0) + 1);
+}
+const categories = [...counts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .map(([id, count]) => ({
+    id,
+    count,
+    label: t.projects.categories[id as Category] ?? id,
+  }));
+
+const label = (id: string) => t.projects.categories[id as Category] ?? id;
+/** Cards past this count start hidden and reveal on demand. */
+const INITIAL = 24;
+---
+
+<Base title={t.meta.projects.title} description={t.meta.projects.description}>
+  <section class="section">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">{t.projects.eyebrow}</p>
+        <h1 class="section-title">{t.projects.title}</h1>
+        <p class="section-lead">{t.projects.lead}</p>
+        <p class="mt-4">
+          <a class="btn btn--outline btn--sm" href={site.portfolioUrl} target="_blank" rel="noopener">
+            {t.projects.fromPortfolio}
+          </a>
+        </p>
+      </header>
+
+      <div class="filters" role="group" aria-label={t.projects.eyebrow}>
+        <button type="button" class="filter is-active" data-filter="all" aria-pressed="true">
+          {t.projects.all}
+          <span class="filter__count">{projects.length}</span>
+        </button>
+        {categories.map((category) => (
+          <button type="button" class="filter" data-filter={category.id} aria-pressed="false">
+            {category.label}
+            <span class="filter__count">{category.count}</span>
+          </button>
+        ))}
+      </div>
+
+      <div class="projects-grid" id="projects-grid">
+        {projects.map((project, i) => (
+          <div
+            class="projects-grid__item"
+            data-tabs={project.tabs.join('|')}
+            data-overflow={i >= INITIAL ? 'true' : 'false'}
+            hidden={i >= INITIAL}
+          >
+            <ProjectCard
+              title={project.title}
+              url={project.url}
+              tags={project.tabs.map(label)}
+              thumb={project.thumb}
+              visitLabel={t.projects.visit}
+              eager={i < 6}
+            />
+          </div>
+        ))}
+      </div>
+
+      <p class="mt-8 text-center">
+        <button type="button" class="btn btn--outline" id="show-more">
+          {t.projects.showMore}
+        </button>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--surface));
+    color: hsl(var(--muted-foreground));
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  }
+  .filter:hover { color: hsl(var(--foreground)); border-color: hsl(var(--primary) / 0.5); }
+  .filter.is-active {
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  .filter__count {
+    font-size: 0.72rem;
+    /* Full opacity: at 0.75 the count failed AA against the active fill. */
+    opacity: 1;
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+  }
+  .filter.is-active .filter__count { color: inherit; }
+
+  .projects-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  }
+  .projects-grid__item { min-width: 0; }
+  .projects-grid__item[hidden] { display: none; }
+</style>
+
+<script>
+  const grid = document.getElementById('projects-grid');
+  const showMore = document.getElementById('show-more') as HTMLButtonElement | null;
+  const filters = Array.from(document.querySelectorAll<HTMLButtonElement>('.filter'));
+  if (grid && showMore) {
+    const items = Array.from(grid.querySelectorAll<HTMLElement>('.projects-grid__item'));
+    let active = 'all';
+    let expanded = false;
+
+    const matches = (item: HTMLElement) =>
+      active === 'all' || (item.dataset.tabs ?? '').split('|').includes(active);
+
+    const render = () => {
+      let shown = 0;
+      for (const item of items) {
+        const ok = matches(item);
+        // When collapsed, only the first 24 matching cards are rendered.
+        const visible = ok && (expanded || shown < 24);
+        if (ok) shown++;
+        item.hidden = !visible;
+      }
+      const total = items.filter(matches).length;
+      showMore.hidden = expanded || total <= 24;
+    };
+
+    showMore.addEventListener('click', () => {
+      expanded = true;
+      render();
+    });
+
+    filters.forEach((button) => {
+      button.addEventListener('click', () => {
+        active = button.dataset.filter ?? 'all';
+        expanded = false;
+        filters.forEach((b) => {
+          const on = b === button;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+        render();
+      });
+    });
+
+    render();
+  }
+</script>
