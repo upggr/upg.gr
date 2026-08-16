@@ -1,0 +1,64 @@
+---
+import { getDict, langFromUrl, type Lang } from '../i18n';
+import { managedServices } from '../data/managed-services';
+import { site } from '../data/site';
+
+const lang = langFromUrl(Astro.url) as Lang;
+const t = getDict(lang);
+
+const icons: Record<string, string> = {
+  send: 'm22 2-7 20-4-9-9-4z M22 2 11 13',
+  mail: 'M2 4h20v16H2z M22 7l-10 6L2 7',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
+  archive: 'M3 3h18v5H3z M5 8v13h14V8 M10 12h4',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3.6 9h16.8M3.6 15h16.8 M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z',
+  calendar: 'M3 5h18v16H3z M3 10h18 M8 3v4M16 3v4',
+  server: 'M3 4h18v6H3z M3 14h18v6H3z M7 7h.01M7 17h.01',
+  wifi: 'M5 12.55a11 11 0 0 1 14 0M8.5 16.4a6 6 0 0 1 7 0M12 20h.01M2 8.8a16 16 0 0 1 20 0',
+};
+---
+
+<section class="section" id="managed">
+  <div class="container">
+    <header class="section-head reveal">
+      <p class="eyebrow">{t.managed.eyebrow}</p>
+      <h2 class="section-title">{t.managed.title}</h2>
+      <p class="section-lead">{t.managed.lead}</p>
+    </header>
+
+    <div class="grid grid--4">
+      {managedServices.map((service) => {
+        const copy = service[lang];
+        return (
+          <article class="card card--hover reveal">
+            <span class="icon-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                {icons[service.icon].split(' M').map((segment, i) => (
+                  <path d={i === 0 ? segment : `M${segment}`} />
+                ))}
+              </svg>
+            </span>
+            <h3 class="card__title">{copy.name}</h3>
+            <p class="card__text mt-2">{copy.text}</p>
+          </article>
+        );
+      })}
+    </div>
+
+    <p class="mt-8">
+      <a class="btn btn--outline" href={`mailto:${site.email}`}>
+        {t.pricing.cta}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </a>
+    </p>
+  </div>
+</section>
+
+<style>
+  .card__title { font-size: 1.05rem; }
+  .card__text { font-size: 0.9rem; }
+</style>

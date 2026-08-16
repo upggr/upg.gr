@@ -1,6 +1,5 @@
 {
   "_comment": "Manual corrections applied on top of the portfolio.buy-it.gr import. Edit this file, not projects.json — scripts/import-projects.mjs reapplies it on every re-import.",
-
   "excludeUrls": {
     "_comment": "Substring match on a project's URL. Staging mirrors, .pages.dev preview hosts, internal tooling and sub-projects that are not separate work.",
     "values": [
@@ -12,44 +11,508 @@
       "tatatext-com.pages.dev",
       "water.polites-zante.com",
       "skopos.polites-zante.com",
-      "boothflix-gr.pages.dev"
+      "boothflix-gr.pages.dev",
+      "oleaallsuitehotel"
     ]
   },
-
   "excludeTitles": {
     "_comment": "Exact title match, for entries that carry no URL.",
-    "values": ["App Greektv Page", "Greektv Page", "Boothflix Gr"]
+    "values": [
+      "App Greektv Page",
+      "Greektv Page",
+      "Boothflix Gr",
+      "Emailxenos"
+    ]
   },
-
   "reurl": {
     "_comment": "Point a project at its production domain instead of the .pages.dev host recorded in the export. Keyed by exact title.",
     "Πολίτες Ζακύνθου": "https://polites-zante.com"
   },
-
   "retab": {
     "_comment": "Replace a project's service categories. Keyed by exact title.",
-    "KARRAS HOTELS": ["Cloud Infrastructure"],
-    "DIANA HOTELS": ["Networking", "Web Services", "Web Hosting", "Cybersecurity", "VoIP"],
-    "FILOXENIA HOTEL": ["Cybersecurity", "VoIP"]
+    "KARRAS HOTELS": [
+      "Cloud Infrastructure"
+    ],
+    "DIANA HOTELS": [
+      "Networking",
+      "Web Services",
+      "Web Hosting",
+      "Cybersecurity",
+      "VoIP"
+    ],
+    "FILOXENIA HOTEL": [
+      "Cybersecurity",
+      "VoIP"
+    ]
   },
-
   "add": {
     "_comment": "Work that is not in the portfolio export.",
     "values": [
       {
         "title": "Διαύγεια Πολιτών Ζακύνθου",
         "url": "https://diavgeia.polites-zante.com",
-        "tags": ["Cloudflare Pages", "Static"],
-        "tabs": ["Web Design"],
+        "tags": [
+          "Cloudflare Pages",
+          "Static"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
         "thumb": null
       },
       {
         "title": "ATLANTIS HOTEL",
         "url": null,
-        "tags": ["3CX PBX"],
-        "tabs": ["VoIP"],
+        "tags": [
+          "3CX PBX"
+        ],
+        "tabs": [
+          "VoIP"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Aeonian Spa",
+        "url": "https://aeonianspa.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/aeonianspa-gr.webp"
+      },
+      {
+        "title": "Artina Villa",
+        "url": "https://artinavilla.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/artinavilla-gr.webp"
+      },
+      {
+        "title": "Auto Traffic Rentals",
+        "url": "https://autotrafficrentals.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/autotrafficrentals-com.webp"
+      },
+      {
+        "title": "Cameo Beach Resort",
+        "url": "https://cameobr.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/cameobr-com.webp"
+      },
+      {
+        "title": "Diana Hotel Zakynthos",
+        "url": "https://diana-hotel-zakynthos.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/diana-hotel-zakynthos-com.webp"
+      },
+      {
+        "title": "Diana Palace Zakynthos",
+        "url": "https://diana-palace-zakynthos.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/diana-palace-zakynthos-com.webp"
+      },
+      {
+        "title": "Dr Laura",
+        "url": "https://drlaura.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/drlaura-gr.webp"
+      },
+      {
+        "title": "Fidelity Travel",
+        "url": "https://fidelitytravel.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/fidelitytravel-gr.webp"
+      },
+      {
+        "title": "Good Times Photography",
+        "url": "https://goodtimesphotography.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/goodtimesphotography-gr.webp"
+      },
+      {
+        "title": "History War Museum",
+        "url": "https://historywarmuseum.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/historywarmuseum-com.webp"
+      },
+      {
+        "title": "Hommobil",
+        "url": "https://hommobil.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/hommobil-com.webp"
+      },
+      {
+        "title": "Kantines.com",
+        "url": "https://kantines.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/kantines-com.webp"
+      },
+      {
+        "title": "La Femme Spa",
+        "url": "https://la-femme-spa.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/la-femme-spa-com.webp"
+      },
+      {
+        "title": "Μουσείο Αναστασίου Λιάσκου",
+        "url": "https://liaskosmuseum.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/liaskosmuseum-gr.webp"
+      },
+      {
+        "title": "Meandros Boutique & Spa Hotel",
+        "url": "https://meandros-boutique.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/meandros-boutique-com.webp"
+      },
+      {
+        "title": "NOE Beach Club",
+        "url": "https://noebeachclub.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/noebeachclub-com.webp"
+      },
+      {
+        "title": "Nonna's Kitchen Bar",
+        "url": "https://nonnas-kitchen-bar.com",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/nonnas-kitchen-bar-com.webp"
+      },
+      {
+        "title": "Villa Romano",
+        "url": "https://villaromano.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/villaromano-gr.webp"
+      },
+      {
+        "title": "Villa Sunshine",
+        "url": "https://villasunshine.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/villasunshine-gr.webp"
+      },
+      {
+        "title": "Xenos Hotels — OLEA All Suite Hotel",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Zante Maris Suites",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — TUI Blue Caravel",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — TUI Blue Zante Maris",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Aqua Bay Hotel",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Aqua Bay Suites",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Aqua Deluxe",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Admiral",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — TUI Suneo Tsilivi Admiral",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — New Beach Hotel",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Planos Hotel",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Commodore",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Xenos Hotels — Captains",
+        "url": null,
+        "tags": [
+          "IT Support",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Γενικό Νοσοκομείο Ζακύνθου",
+        "url": "https://zante-hospital.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/zante-hospital-gr.webp"
+      },
+      {
+        "title": "Γενικό Νοσοκομείο Ζακύνθου",
+        "url": null,
+        "tags": [
+          "Microsoft 365",
+          "Endpoint Protection",
+          "Endpoint Backup"
+        ],
+        "tabs": [
+          "Microsoft 365",
+          "Cybersecurity",
+          "Managed IT"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Επιμελητήριο Ζακύνθου",
+        "url": "https://www.zakynthoscci.gr",
+        "tags": [
+          "Web Hosting",
+          "WordPress"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": "/projects/zakynthoscci-gr.webp"
+      },
+      {
+        "title": "Επιμελητήριο Ζακύνθου",
+        "url": null,
+        "tags": [
+          "Microsoft 365",
+          "Endpoint Protection"
+        ],
+        "tabs": [
+          "Microsoft 365",
+          "Cybersecurity"
+        ],
         "thumb": null
       }
+    ]
+  },
+  "excludeTabs": {
+    "_comment": "Service categories that never appear as cards. DNS zones are infrastructure, not showcase work.",
+    "values": [
+      "DNS Management"
     ]
   }
 }

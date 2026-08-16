@@ -1,6 +1,5 @@
 ---
 import { getDict, langFromUrl, localizedPath, type Lang } from '../i18n';
-import { site } from '../data/site';
 import projects from '../data/projects.json';
 import ProjectCard from './ProjectCard.astro';
 
@@ -42,9 +41,6 @@ const featured = projects.filter((x) => x.thumb && x.url).slice(0, 6);
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M5 12h14M12 5l7 7-7 7" />
         </svg>
-      </a>
-      <a class="btn btn--ghost" href={site.portfolioUrl} target="_blank" rel="noopener">
-        {t.projects.fromPortfolio}
       </a>
     </div>
   </div>

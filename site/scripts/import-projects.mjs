@@ -46,6 +46,7 @@ const overrides = JSON.parse(
 );
 const excludeUrls = overrides.excludeUrls?.values ?? [];
 const excludeTitles = new Set(overrides.excludeTitles?.values ?? []);
+const excludeTabs = new Set(overrides.excludeTabs?.values ?? []);
 const retab = Object.fromEntries(
   Object.entries(overrides.retab ?? {}).filter(([key]) => !key.startsWith('_'))
 );
@@ -69,6 +70,10 @@ for (const entry of raw) {
   if (url && excludeUrls.some((fragment) => url.includes(fragment))) continue;
   if (retab[title]) tabs = retab[title];
   if (reurl[title]) url = reurl[title];
+
+  // Drop excluded categories, and the entry entirely if nothing else remains.
+  tabs = tabs.filter((tab) => !excludeTabs.has(tab));
+  if (tabs.length === 0) continue;
 
   /*
    * Dedupe key. Linked entries collapse on their canonical host *and*
@@ -114,14 +119,26 @@ projects.sort(
     a.title.localeCompare(b.title)
 );
 
-// Re-encode thumbnails: the source PNGs are ~35MB in total.
-await rm(outThumbs, { recursive: true, force: true });
+/*
+ * Re-encode thumbnails from the export (the source PNGs are ~35MB in total).
+ * Screenshots referenced by project-overrides.json have no source to rebuild
+ * from, so they are kept rather than cleared.
+ */
 await mkdir(outThumbs, { recursive: true });
+const keep = new Set(
+  projects.filter((p) => p.thumb && !p._srcThumb).map((p) => basename(p.thumb))
+);
+for (const file of await readdir(outThumbs)) {
+  if (!keep.has(file)) await rm(join(outThumbs, file), { force: true });
+}
 
 let bytes = 0;
 for (const project of projects) {
   if (!project._srcThumb) {
-    project.thumb = null;
+    // An override thumbnail is kept only if the file is actually there.
+    if (project.thumb && !existsSync(join(siteRoot, 'public', project.thumb))) {
+      project.thumb = null;
+    }
     continue;
   }
   const name = basename(project._srcThumb).replace(/\.(png|jpe?g|webp)$/i, '') + '.webp';

@@ -83,7 +83,8 @@ const Tag = url ? 'a' : 'div';
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 1.75rem;
-    color: hsl(var(--primary) / 0.55);
+    /* Large text needs 3:1; the alpha wash fell below it in both themes. */
+    color: hsl(var(--primary-text));
     letter-spacing: 0.05em;
   }
 

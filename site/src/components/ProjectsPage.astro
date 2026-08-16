@@ -2,14 +2,11 @@
 import Base from '../layouts/Base.astro';
 import ProjectCard from './ProjectCard.astro';
 import { getDict, langFromUrl, type Lang } from '../i18n';
-import { site } from '../data/site';
 import projects from '../data/projects.json';
+import { serviceReach } from '../data/service-reach';
 
 const lang = langFromUrl(Astro.url) as Lang;
 const t = getDict(lang);
-
-type Category = keyof typeof t.projects.categories;
-const label = (id: string) => t.projects.categories[id as Category] ?? id;
 
 /*
  * Only website work earns a card: those entries have a screenshot and a live
@@ -21,36 +18,15 @@ const WEB = 'Web Design';
 
 const webProjects = projects.filter((project) => project.tabs.includes(WEB));
 
-const counts = new Map<string, number>();
-for (const project of projects) {
-  for (const tab of project.tabs) {
-    if (tab === WEB) continue;
-    counts.set(tab, (counts.get(tab) ?? 0) + 1);
-  }
-}
-const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-
 /*
- * Keep the tile count to a multiple of the grid's column counts (2 / 3 / 5) so
- * the final row is never left half empty. The smallest categories are rolled
- * into a single "other services" tile rather than dropped.
+ * Counts of live client engagements, taken from billing rather than from the
+ * portfolio: the portfolio only records showcase work, so it badly understated
+ * how many businesses are actually on each service.
  */
-const KEEP = 7;
-const headline = ranked.slice(0, KEEP);
-const remainder = ranked.slice(KEEP);
-
-const serviceStats = [
-  ...headline.map(([id, count]) => ({ id, count, label: label(id) })),
-  ...(remainder.length
-    ? [
-        {
-          id: 'other',
-          count: remainder.reduce((sum, [, count]) => sum + count, 0),
-          label: t.projects.otherServices,
-        },
-      ]
-    : []),
-];
+const serviceStats = serviceReach.map((stat) => ({
+  ...stat,
+  label: t.projects.reach[stat.id],
+}));
 
 /** Cards past this count start hidden and reveal on demand. */
 const INITIAL = 24;
@@ -63,11 +39,6 @@ const INITIAL = 24;
         <p class="eyebrow">{t.projects.eyebrow}</p>
         <h1 class="section-title">{t.projects.title}</h1>
         <p class="section-lead">{t.projects.lead}</p>
-        <p class="mt-4">
-          <a class="btn btn--outline btn--sm" href={site.portfolioUrl} target="_blank" rel="noopener">
-            {t.projects.fromPortfolio}
-          </a>
-        </p>
       </header>
 
       <div class="projects-grid" id="projects-grid">
@@ -126,8 +97,8 @@ const INITIAL = 24;
   .services-summary__title { font-size: clamp(1.3rem, 3vw, 1.75rem); }
   .services-summary .section-lead { margin-bottom: 2rem; }
 
-  /* Fixed column counts rather than auto-fit: the tile count divides evenly
-     at each step, so the last row never leaves a half-empty gap. */
+  /* Fixed column counts rather than auto-fit: six tiles divide evenly by both
+     2 and 3, so the last row is never left half empty. */
   .services-summary__grid {
     display: grid;
     gap: 1px;
@@ -138,8 +109,8 @@ const INITIAL = 24;
     border-radius: var(--radius-lg);
     overflow: hidden;
   }
-  @media (min-width: 62rem) {
-    .services-summary__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (min-width: 48rem) {
+    .services-summary__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
   .services-summary__stat {
     background: hsl(var(--card));

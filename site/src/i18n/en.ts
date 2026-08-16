@@ -74,9 +74,9 @@ export default {
       { title: 'Security First', text: 'Data protection at every layer.' },
     ],
     stats: [
-      { value: '131+', label: 'DNS zones managed' },
-      { value: '230+', label: 'Active projects & systems' },
-      { value: '99.9%', label: 'Uptime' },
+      { value: '65+', label: 'Business clients' },
+      { value: '460+', label: 'Microsoft 365 seats' },
+      { value: '430+', label: 'Protected devices' },
       { value: '24/7', label: 'Support' },
     ],
   },
@@ -129,6 +129,13 @@ export default {
         text: 'IPTV and icecast streaming infrastructure, 3CX phone systems and hotel solutions.',
       },
     ],
+  },
+
+  managed: {
+    eyebrow: 'Subscription services',
+    title: 'Services we run for you',
+    lead:
+      'Services we provide and manage on an ongoing basis — one bill, one point of support, and no vendors for you to deal with.',
   },
 
   platforms: {
@@ -295,14 +302,20 @@ export default {
       'Websites we designed, host and support — including work shared with our sister company Buy IT.',
     all: 'All',
     beyondWeb: 'Beyond websites',
-    otherServices: 'Other services',
+    reach: {
+      microsoft365: 'Businesses on Microsoft 365',
+      hosting: 'On managed web hosting',
+      domains: 'With managed domains',
+      security: 'With protection & backup',
+      cloud: 'On cloud infrastructure',
+      booking: 'With a booking system',
+    },
     beyondWebLead:
-      'Websites are only part of it. We also run the infrastructure, security and cloud services behind dozens of businesses.',
+      'Websites are only part of it. Below is how many businesses we actively support on each service.',
     visit: 'Visit',
     showMore: 'More projects',
     countLabel: 'projects',
     viewAll: 'View all projects',
-    fromPortfolio: 'See the full portfolio at buy-it.gr',
     categories: {
       'Web Design': 'Web Design',
       'Web Hosting': 'Web Hosting',
