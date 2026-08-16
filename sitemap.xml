@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://upg.gr/</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/en</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/cybersecurity</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/cybersecurity"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en/cybersecurity"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/cybersecurity"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/en/cybersecurity</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/cybersecurity"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en/cybersecurity"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/cybersecurity"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/products</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/products"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en/products"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/products"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/en/products</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/products"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en/products"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/products"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/projects</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/projects"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en/projects"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/projects"/>
+  </url>
+  <url>
+    <loc>https://upg.gr/en/projects</loc>
+    <lastmod>2026-08-16</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="el" href="https://upg.gr/projects"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://upg.gr/en/projects"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://upg.gr/projects"/>
+  </url>
+</urlset>

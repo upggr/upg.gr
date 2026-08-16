@@ -1,3 +1,7 @@
 name = "upg-gr"
 compatibility_date = "2026-08-15"
-pages_build_output_dir = "site/dist"
+
+# The built site is committed at the repository root, so Cloudflare Pages
+# serves it directly with no build step. Regenerate it with:
+#   cd site && npm run publish:root
+pages_build_output_dir = "."

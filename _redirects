@@ -1,0 +1,9 @@
+# Legacy Mobirise URLs -> new structure
+/index.html   /               301
+/page1.html   /products       301
+/page2.html   /cybersecurity  301
+
+# The old service worker is gone; make sure stale clients stop requesting it
+/sw.js              /   301
+/sw-connect.js      /   301
+/sw-resources.json  /   301

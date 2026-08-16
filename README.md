@@ -11,25 +11,29 @@ npm install
 npm run dev      # http://localhost:4321
 ```
 
-## Build
+## Build and publish
+
+Cloudflare Pages serves this repository's **root** directly, with no build
+step. The generated site is therefore committed at the root, and you
+regenerate it before committing:
 
 ```bash
 cd site
-npm run build    # -> site/dist
+npm run publish:root   # astro build, then copy site/dist -> repo root
+```
+
+Then commit and push as usual — Pages picks up the new files.
+
+```bash
+npm run build    # -> site/dist only (no publish)
 npm run preview  # serve the built output locally
 npm run check    # astro + TypeScript diagnostics
 ```
 
-## Cloudflare Pages settings
-
-| Setting | Value |
-| --- | --- |
-| Build command | `cd site && npm ci && npm run build` |
-| Build output directory | `site/dist` |
-| Node version | 20 or newer (`NODE_VERSION` env var) |
-
-`wrangler.toml` already declares `pages_build_output_dir`, so a Git-connected
-Pages project only needs the build command above.
+> **Note**
+> `npm run publish:root` replaces only the paths the build generates
+> (`index.html`, `en/`, `_astro/`, `fonts/`, …). It never touches `legacy/`,
+> `tools/`, `data/` or `site/`.
 
 Headers, caching and legacy redirects live in [`site/public/_headers`](site/public/_headers)
 and [`site/public/_redirects`](site/public/_redirects); both are copied to the
