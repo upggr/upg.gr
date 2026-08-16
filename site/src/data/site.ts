@@ -8,7 +8,6 @@ export const site = {
     { display: '+30 698 810 4870', href: '+306988104870' },
   ],
   sister: { name: 'Buy IT', url: 'https://buy-it.gr' },
-  portfolioUrl: 'https://portfolio.buy-it.gr',
   social: [
     { name: 'Facebook', href: 'https://www.facebook.com/d3scr1pt0r' },
     { name: 'Instagram', href: 'https://www.instagram.com/upggr/' },
