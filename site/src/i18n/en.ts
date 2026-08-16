@@ -299,7 +299,7 @@ export default {
     eyebrow: 'Projects',
     title: 'Infrastructure we run every day',
     lead:
-      'Websites we designed, host and support — including work shared with our sister company Buy IT.',
+      'Projects and infrastructure we design, host and support — from websites through security, Microsoft 365 and networking.',
     all: 'All',
     hostingOnly: 'Hosting & maintenance',
     hostingOnlyLead:
@@ -320,7 +320,8 @@ export default {
     countLabel: 'projects',
     viewAll: 'View all projects',
     categories: {
-      'Web Design': 'Web Design',
+      'Web Design': 'Our projects',
+      'Hosting Only': 'Hosting & maintenance',
       'Web Hosting': 'Web Hosting',
       'DNS Management': 'DNS Management',
       Cybersecurity: 'Cybersecurity',

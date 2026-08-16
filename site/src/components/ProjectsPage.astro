@@ -8,18 +8,37 @@ import { serviceReach } from '../data/service-reach';
 const lang = langFromUrl(Astro.url) as Lang;
 const t = getDict(lang);
 
-/*
- * Only website work earns a card: those entries have a screenshot and a live
- * URL, so they show something. The other services are real engagements but
- * carry no image or link, so they are summarised as counts instead of
- * rendering 160+ identical placeholder tiles.
- */
-const WEB = 'Web Design';
-/** Sites we host and maintain but did not design. */
-const HOSTING_ONLY = 'Hosting Only';
+type Category = keyof typeof t.projects.categories;
+const label = (id: string) => t.projects.categories[id as Category] ?? id;
 
-const webProjects = projects.filter((project) => project.tabs.includes(WEB));
-const hostedProjects = projects.filter((project) => project.tabs.includes(HOSTING_ONLY));
+/*
+ * One tab per service, so every engagement is reachable — not just the
+ * website work. Websites lead because they are the only entries with a
+ * screenshot; the rest render as name tiles.
+ */
+const TAB_ORDER = [
+  'Web Design',
+  'Hosting Only',
+  'Cybersecurity',
+  'Microsoft 365',
+  'Managed IT',
+  'Cloud Infrastructure',
+  'Web Services',
+  'VoIP',
+  'Web Hosting',
+  'Networking',
+];
+
+const counts = new Map<string, number>();
+for (const project of projects) {
+  for (const tab of project.tabs) counts.set(tab, (counts.get(tab) ?? 0) + 1);
+}
+
+const tabs = TAB_ORDER.filter((id) => counts.has(id)).map((id) => ({
+  id,
+  count: counts.get(id) ?? 0,
+  label: label(id),
+}));
 
 /*
  * Counts of live client engagements, taken from billing rather than from the
@@ -31,7 +50,7 @@ const serviceStats = serviceReach.map((stat) => ({
   label: t.projects.reach[stat.id],
 }));
 
-/** Cards past this count start hidden and reveal on demand. */
+/** Cards past this count start hidden within each tab, and reveal on demand. */
 const INITIAL = 24;
 ---
 
@@ -44,46 +63,63 @@ const INITIAL = 24;
         <p class="section-lead">{t.projects.lead}</p>
       </header>
 
-      <div class="projects-grid" id="projects-grid">
-        {webProjects.map((project, i) => (
-          <div class="projects-grid__item" hidden={i >= INITIAL}>
-            <ProjectCard
-              title={project.title}
-              url={project.url}
-              tags={project.tags.slice(0, 2)}
-              thumb={project.thumb}
-              visitLabel={t.projects.visit}
-              eager={i < 6}
-            />
-          </div>
-        ))}
-      </div>
+      <div class="project-tabs" data-project-tabs>
+        <div class="tabs__list" role="tablist" aria-label={t.projects.eyebrow}>
+          {tabs.map((tab, i) => (
+            <button
+              type="button"
+              role="tab"
+              id={`projects-tab-${i}`}
+              aria-controls={`projects-panel-${i}`}
+              aria-selected={i === 0 ? 'true' : 'false'}
+              tabindex={i === 0 ? 0 : -1}
+              class="tabs__btn"
+            >
+              {tab.label}
+              <span class="tabs__count">{tab.count}</span>
+            </button>
+          ))}
+        </div>
 
-      <p class="mt-8 text-center">
-        <button type="button" class="btn btn--outline" id="show-more">
-          {t.projects.showMore}
-        </button>
-      </p>
-
-      {hostedProjects.length > 0 && (
-        <section class="hosted" aria-labelledby="hosted-title">
-          <h2 class="hosted__title" id="hosted-title">{t.projects.hostingOnly}</h2>
-          <p class="section-lead">{t.projects.hostingOnlyLead}</p>
-          <div class="projects-grid">
-            {hostedProjects.map((project) => (
-              <div class="projects-grid__item">
-                <ProjectCard
-                  title={project.title}
-                  url={project.url}
-                  tags={project.tags.slice(0, 2)}
-                  thumb={project.thumb}
-                  visitLabel={t.projects.visit}
-                />
+        {tabs.map((tab, i) => {
+          const items = projects.filter((project) => project.tabs.includes(tab.id));
+          return (
+            <div
+              role="tabpanel"
+              id={`projects-panel-${i}`}
+              aria-labelledby={`projects-tab-${i}`}
+              class="project-tabs__panel"
+              data-first={i === 0 ? 'true' : 'false'}
+              tabindex="0"
+            >
+              {tab.id === 'Hosting Only' && (
+                <p class="section-lead panel-note">{t.projects.hostingOnlyLead}</p>
+              )}
+              <div class="projects-grid">
+                {items.map((project, j) => (
+                  <div class="projects-grid__item" hidden={j >= INITIAL}>
+                    <ProjectCard
+                      title={project.title}
+                      url={project.url}
+                      tags={project.tags.slice(0, 2)}
+                      thumb={project.thumb}
+                      visitLabel={t.projects.visit}
+                      eager={i === 0 && j < 6}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+              {items.length > INITIAL && (
+                <p class="mt-8 text-center">
+                  <button type="button" class="btn btn--outline" data-show-more>
+                    {t.projects.showMore}
+                  </button>
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       <section class="services-summary" aria-labelledby="services-summary-title">
         <h2 class="services-summary__title" id="services-summary-title">
@@ -112,13 +148,46 @@ const INITIAL = 24;
   .projects-grid__item { min-width: 0; }
   .projects-grid__item[hidden] { display: none; }
 
-  .hosted {
-    margin-top: clamp(3rem, 7vw, 5rem);
-    padding-top: clamp(2rem, 5vw, 3rem);
-    border-top: 1px solid hsl(var(--border));
+  .tabs__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
   }
-  .hosted__title { font-size: clamp(1.3rem, 3vw, 1.75rem); }
-  .hosted .section-lead { margin-bottom: 2rem; }
+  .tabs__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--surface));
+    color: hsl(var(--muted-foreground));
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  }
+  .tabs__btn:hover { color: hsl(var(--foreground)); border-color: hsl(var(--primary) / 0.5); }
+  .tabs__btn[aria-selected='true'] {
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  .tabs__count {
+    font-size: 0.72rem;
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+  }
+  .tabs__btn[aria-selected='true'] .tabs__count { color: inherit; }
+
+  /* Without JS every panel stays visible, so nothing is unreachable. */
+  :global(html.js) .project-tabs__panel[hidden] { display: none; }
+  .project-tabs__panel + .project-tabs__panel { margin-top: 2.5rem; }
+  :global(html.js) .project-tabs__panel + .project-tabs__panel { margin-top: 0; }
+
+  .panel-note { margin-bottom: 1.5rem; }
 
   .services-summary {
     margin-top: clamp(3rem, 7vw, 5rem);
@@ -167,16 +236,51 @@ const INITIAL = 24;
 </style>
 
 <script>
-  const grid = document.getElementById('projects-grid');
-  const showMore = document.getElementById('show-more') as HTMLButtonElement | null;
-  if (grid && showMore) {
-    const items = Array.from(grid.querySelectorAll<HTMLElement>('.projects-grid__item'));
+  // "Show more" reveals the rest of the cards inside its own panel.
+  document.querySelectorAll<HTMLButtonElement>('[data-show-more]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const panel = button.closest<HTMLElement>('.project-tabs__panel');
+      panel?.querySelectorAll<HTMLElement>('.projects-grid__item').forEach((item) => {
+        item.hidden = false;
+      });
+      button.hidden = true;
+    });
+  });
 
-    showMore.hidden = items.every((item) => !item.hidden);
+  const root = document.querySelector<HTMLElement>('[data-project-tabs]');
+  if (root) {
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const panels = Array.from(root.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
 
-    showMore.addEventListener('click', () => {
-      for (const item of items) item.hidden = false;
-      showMore.hidden = true;
+    // JS is on, so collapse to the first panel.
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.first !== 'true';
+    });
+
+    const select = (index: number, focus = true) => {
+      tabs.forEach((tab, i) => {
+        const active = i === index;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        panels[i].hidden = !active;
+      });
+      if (focus) tabs[index].focus();
+    };
+
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => select(i, false));
+      tab.addEventListener('keydown', (e) => {
+        const last = tabs.length - 1;
+        let next: number | null = null;
+        if (e.key === 'ArrowRight') next = i === last ? 0 : i + 1;
+        else if (e.key === 'ArrowLeft') next = i === 0 ? last : i - 1;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = last;
+        if (next !== null) {
+          e.preventDefault();
+          select(next);
+        }
+      });
     });
   }
 </script>

@@ -300,7 +300,7 @@ export default {
     eyebrow: 'Έργα',
     title: 'Υποδομές που τρέχουμε καθημερινά',
     lead:
-      'Ιστοσελίδες που σχεδιάσαμε, φιλοξενούμε και υποστηρίζουμε — μαζί με τη σύνδεσή μας με την αδελφή εταιρεία Buy IT.',
+      'Έργα και υποδομές που σχεδιάζουμε, φιλοξενούμε και υποστηρίζουμε — από ιστοσελίδες μέχρι ασφάλεια, Microsoft 365 και δίκτυα.',
     all: 'Όλα',
     hostingOnly: 'Φιλοξενία & συντήρηση',
     hostingOnlyLead:
@@ -321,7 +321,8 @@ export default {
     countLabel: 'έργα',
     viewAll: 'Δείτε όλα τα έργα',
     categories: {
-      'Web Design': 'Web Design',
+      'Web Design': 'Τα έργα μας',
+      'Hosting Only': 'Φιλοξενία & συντήρηση',
       'Web Hosting': 'Web Hosting',
       'DNS Management': 'Διαχείριση DNS',
       Cybersecurity: 'Cybersecurity',
