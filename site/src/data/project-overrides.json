@@ -12,7 +12,10 @@
       "water.polites-zante.com",
       "skopos.polites-zante.com",
       "boothflix-gr.pages.dev",
-      "oleaallsuitehotel"
+      "oleaallsuitehotel",
+      "polites-zante.pages.dev",
+      "fidelitytravel-gr.pages.dev",
+      "diana-hotel-zakynthos.com"
     ]
   },
   "excludeTitles": {
@@ -21,12 +24,15 @@
       "App Greektv Page",
       "Greektv Page",
       "Boothflix Gr",
-      "Emailxenos"
+      "Emailxenos",
+      "Buy It Ticketing Api",
+      "Damp Smoke 737d",
+      "Shopify Elorus Worker",
+      "Shopify Greek Tools"
     ]
   },
   "reurl": {
-    "_comment": "Point a project at its production domain instead of the .pages.dev host recorded in the export. Keyed by exact title.",
-    "Πολίτες Ζακύνθου": "https://polites-zante.com"
+    "_comment": "Point a project at its production domain instead of the .pages.dev host recorded in the export. Keyed by exact title."
   },
   "retab": {
     "_comment": "Replace a project's service categories. Keyed by exact title.",
@@ -43,6 +49,12 @@
     "FILOXENIA HOTEL": [
       "Cybersecurity",
       "VoIP"
+    ],
+    "Fidelity Travel Agency": [
+      "Hosting Only"
+    ],
+    "Diana Palace Zakynthos": [
+      "Hosting Only"
     ]
   },
   "add": {
@@ -120,30 +132,6 @@
         "thumb": "/projects/cameobr-com.webp"
       },
       {
-        "title": "Diana Hotel Zakynthos",
-        "url": "https://diana-hotel-zakynthos.com",
-        "tags": [
-          "Web Hosting",
-          "WordPress"
-        ],
-        "tabs": [
-          "Web Design"
-        ],
-        "thumb": "/projects/diana-hotel-zakynthos-com.webp"
-      },
-      {
-        "title": "Diana Palace Zakynthos",
-        "url": "https://diana-palace-zakynthos.com",
-        "tags": [
-          "Web Hosting",
-          "WordPress"
-        ],
-        "tabs": [
-          "Web Design"
-        ],
-        "thumb": "/projects/diana-palace-zakynthos-com.webp"
-      },
-      {
         "title": "Dr Laura",
         "url": "https://drlaura.gr",
         "tags": [
@@ -154,18 +142,6 @@
           "Web Design"
         ],
         "thumb": "/projects/drlaura-gr.webp"
-      },
-      {
-        "title": "Fidelity Travel",
-        "url": "https://fidelitytravel.gr",
-        "tags": [
-          "Web Hosting",
-          "WordPress"
-        ],
-        "tabs": [
-          "Web Design"
-        ],
-        "thumb": "/projects/fidelitytravel-gr.webp"
       },
       {
         "title": "Good Times Photography",
@@ -506,6 +482,40 @@
           "Cybersecurity"
         ],
         "thumb": null
+      },
+      {
+        "title": "Πολίτες Ζακύνθου",
+        "url": "https://polites-zante.com",
+        "tags": [
+          "Cloudflare Pages",
+          "Static"
+        ],
+        "tabs": [
+          "Web Design"
+        ],
+        "thumb": null
+      },
+      {
+        "title": "Diana Palace Zakynthos",
+        "url": "https://diana-palace-zakynthos.com",
+        "tags": [
+          "Web Hosting"
+        ],
+        "tabs": [
+          "Hosting Only"
+        ],
+        "thumb": "/projects/diana-palace-zakynthos-com.webp"
+      },
+      {
+        "title": "Fidelity Travel",
+        "url": "https://fidelitytravel.gr",
+        "tags": [
+          "Web Hosting"
+        ],
+        "tabs": [
+          "Hosting Only"
+        ],
+        "thumb": "/projects/fidelitytravel-gr.webp"
       }
     ]
   },
@@ -514,5 +524,21 @@
     "values": [
       "DNS Management"
     ]
+  },
+  "retitle": {
+    "_comment": "Human-readable names for entries the export recorded as a slugified domain.",
+    "Aquadeluxe Gr": "Aqua Deluxe",
+    "Gaiahouse Gr": "Gaia House",
+    "Laurasuites Com": "Laura Suites",
+    "Sanantoniovillas Gr": "San Antonio Villas",
+    "Zamasuites Com": "Zama Suites",
+    "Upg Gr": "UPGRADE",
+    "Ielko Com": "Ielko",
+    "Centered Image": "Star of the East 880",
+    "katharanera": "Καθαρά Νερά",
+    "Artogonia Com": "Artogonia",
+    "Palmoszante Com": "Παλμός Ζακύνθου",
+    "Liaskos Museums Com": "Liaskos Museums",
+    "Buy It Ticketing": "ChronoTicket"
   }
 }

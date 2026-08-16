@@ -108,7 +108,7 @@
   "thumb": "/projects/aqua-bay-suites-tsilivi-zakynthos-greece.webp"
  },
  {
-  "title": "Aquadeluxe Gr",
+  "title": "Aqua Deluxe",
   "url": "https://aquadeluxe.gr",
   "tags": [
    "Cloudflare Pages",
@@ -132,7 +132,7 @@
   "thumb": "/projects/artinavilla-gr.webp"
  },
  {
-  "title": "Artogonia Com",
+  "title": "Artogonia",
   "url": "https://artogonia-com.pages.dev",
   "tags": [
    "Cloudflare Pages",
@@ -168,18 +168,6 @@
   "thumb": "/projects/azor-villas-mouzaki-zante-zakynthos-greece.webp"
  },
  {
-  "title": "Buy It Ticketing",
-  "url": "https://chronoticket.com",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/buy-it-ticketing.webp"
- },
- {
   "title": "Cameo Beach Resort",
   "url": "https://cameobr.com",
   "tags": [
@@ -204,8 +192,8 @@
   "thumb": "/projects/captains-hotel-in-argassi-zakynthos-greece.webp"
  },
  {
-  "title": "Centered Image",
-  "url": "https://staroftheeast880.com",
+  "title": "ChronoTicket",
+  "url": "https://chronoticket.com",
   "tags": [
    "Cloudflare Pages",
    "Static"
@@ -213,7 +201,7 @@
   "tabs": [
    "Web Design"
   ],
-  "thumb": "/projects/centered-image.webp"
+  "thumb": "/projects/buy-it-ticketing.webp"
  },
  {
   "title": "Commodore Hotel in Argassi, Zakynthos, Greece",
@@ -240,28 +228,15 @@
   "thumb": "/projects/cronulla-hotel-in-kalamaki-zakynthos-greece.webp"
  },
  {
-  "title": "Diana Hotel Zakynthos",
-  "url": "https://diana-hotel-zakynthos.com",
-  "tags": [
-   "Web Hosting",
-   "WordPress"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/diana-hotel-zakynthos-com.webp"
- },
- {
   "title": "Diana Palace Zakynthos",
   "url": "https://diana-palace-zakynthos.com",
   "tags": [
-   "Web Hosting",
-   "WordPress"
+   "Web Hosting"
   ],
   "tabs": [
-   "Web Design"
+   "Hosting Only"
   ],
-  "thumb": null
+  "thumb": "/projects/diana-palace-zakynthos-com.webp"
  },
  {
   "title": "Dr Laura",
@@ -279,25 +254,12 @@
   "title": "Fidelity Travel",
   "url": "https://fidelitytravel.gr",
   "tags": [
-   "Web Hosting",
-   "WordPress"
+   "Web Hosting"
   ],
   "tabs": [
-   "Web Design"
+   "Hosting Only"
   ],
   "thumb": "/projects/fidelitytravel-gr.webp"
- },
- {
-  "title": "Fidelity Travel Agency",
-  "url": "https://fidelitytravel-gr.pages.dev",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/fidelity-travel-agency-zakynthos-greece.webp"
  },
  {
   "title": "Filios Villa",
@@ -360,7 +322,7 @@
   "thumb": "/projects/hommobil-com.webp"
  },
  {
-  "title": "Ielko Com",
+  "title": "Ielko",
   "url": "https://ielko.com",
   "tags": [
    "Cloudflare Pages",
@@ -396,18 +358,6 @@
   "thumb": "/projects/kantines-com.webp"
  },
  {
-  "title": "katharanera",
-  "url": "https://katharanera.com",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/katharanera.webp"
- },
- {
   "title": "La Femme Spa",
   "url": "https://la-femme-spa.com",
   "tags": [
@@ -420,7 +370,7 @@
   "thumb": "/projects/la-femme-spa-com.webp"
  },
  {
-  "title": "Laurasuites Com",
+  "title": "Laura Suites",
   "url": "https://laurasuites.com",
   "tags": [
    "Cloudflare Pages",
@@ -444,7 +394,7 @@
   "thumb": "/projects/lea-villa-zante-luxury-villa-with-private-pool-in-zakynthos-greece.webp"
  },
  {
-  "title": "Liaskos Museums Com",
+  "title": "Liaskos Museums",
   "url": "https://liaskos-museums.com",
   "tags": [
    "Cloudflare Pages",
@@ -516,18 +466,6 @@
   "thumb": "/projects/numberoad-arcade-number-runner.webp"
  },
  {
-  "title": "Palmoszante Com",
-  "url": "https://palmoszante-com.pages.dev",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/palmoszante-com.webp"
- },
- {
   "title": "Planos Bay Hotel in Tsilivi, Zakynthos, Greece",
   "url": "https://planosbayhotel.gr",
   "tags": [
@@ -564,7 +502,7 @@
   "thumb": "/projects/prisma-flowchart-generator.webp"
  },
  {
-  "title": "Sanantoniovillas Gr",
+  "title": "San Antonio Villas",
   "url": "https://sanantoniovillas.gr",
   "tags": [
    "Cloudflare Pages",
@@ -586,6 +524,18 @@
    "Web Design"
   ],
   "thumb": "/projects/sky-birds-villa-holistic-escape.webp"
+ },
+ {
+  "title": "Star of the East 880",
+  "url": "https://staroftheeast880.com",
+  "tags": [
+   "Cloudflare Pages",
+   "Static"
+  ],
+  "tabs": [
+   "Web Design"
+  ],
+  "thumb": "/projects/centered-image.webp"
  },
  {
   "title": "Traventure in Greece",
@@ -648,7 +598,7 @@
   "thumb": "/projects/tui-suneo-tsilivi-admiral-hotel-zakynthos-greece.webp"
  },
  {
-  "title": "Upg Gr",
+  "title": "UPGRADE",
   "url": "https://upg.gr",
   "tags": [
    "Cloudflare Pages",
@@ -708,7 +658,7 @@
   "thumb": "/projects/xenos-group-hotels-zakynthos-greece.webp"
  },
  {
-  "title": "Zamasuites Com",
+  "title": "Zama Suites",
   "url": "https://www.zamasuites.com",
   "tags": [
    "Cloudflare Pages",
@@ -768,6 +718,18 @@
   "thumb": "/projects/zakynthoscci-gr.webp"
  },
  {
+  "title": "Καθαρά Νερά",
+  "url": "https://katharanera.com",
+  "tags": [
+   "Cloudflare Pages",
+   "Static"
+  ],
+  "tabs": [
+   "Web Design"
+  ],
+  "thumb": "/projects/katharanera.webp"
+ },
+ {
   "title": "Μουσείο Αναστασίου Λιάσκου",
   "url": "https://liaskosmuseum.gr",
   "tags": [
@@ -780,8 +742,8 @@
   "thumb": "/projects/liaskosmuseum-gr.webp"
  },
  {
-  "title": "Πολίτες Ζακύνθου",
-  "url": "https://polites-zante.pages.dev",
+  "title": "Παλμός Ζακύνθου",
+  "url": "https://palmoszante-com.pages.dev",
   "tags": [
    "Cloudflare Pages",
    "Static"
@@ -789,10 +751,10 @@
   "tabs": [
    "Web Design"
   ],
-  "thumb": null
+  "thumb": "/projects/palmoszante-com.webp"
  },
  {
-  "title": "Gaiahouse Gr",
+  "title": "Gaia House",
   "url": "https://gaiahouse.gr",
   "tags": [
    "Cloudflare Pages",
@@ -806,6 +768,18 @@
  {
   "title": "Διαύγεια Πολιτών Ζακύνθου",
   "url": "https://diavgeia.polites-zante.com",
+  "tags": [
+   "Cloudflare Pages",
+   "Static"
+  ],
+  "tabs": [
+   "Web Design"
+  ],
+  "thumb": null
+ },
+ {
+  "title": "Πολίτες Ζακύνθου",
+  "url": "https://polites-zante.com",
   "tags": [
    "Cloudflare Pages",
    "Static"
@@ -866,18 +840,6 @@
   "thumb": null
  },
  {
-  "title": "Buy It Ticketing Api",
-  "url": null,
-  "tags": [
-   "Cloudflare Workers",
-   "Serverless"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": null
- },
- {
   "title": "CAMEO BEACH",
   "url": null,
   "tags": [
@@ -916,18 +878,6 @@
   "tabs": [
    "Cybersecurity",
    "Managed IT"
-  ],
-  "thumb": null
- },
- {
-  "title": "Damp Smoke 737d",
-  "url": null,
-  "tags": [
-   "Cloudflare Workers",
-   "Serverless"
-  ],
-  "tabs": [
-   "Web Design"
   ],
   "thumb": null
  },
@@ -1090,30 +1040,6 @@
   ],
   "tabs": [
    "Microsoft 365"
-  ],
-  "thumb": null
- },
- {
-  "title": "Shopify Elorus Worker",
-  "url": null,
-  "tags": [
-   "Cloudflare Workers",
-   "Serverless"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": null
- },
- {
-  "title": "Shopify Greek Tools",
-  "url": null,
-  "tags": [
-   "Cloudflare Workers",
-   "Serverless"
-  ],
-  "tabs": [
-   "Web Design"
   ],
   "thumb": null
  },

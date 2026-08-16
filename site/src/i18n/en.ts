@@ -301,6 +301,9 @@ export default {
     lead:
       'Websites we designed, host and support — including work shared with our sister company Buy IT.',
     all: 'All',
+    hostingOnly: 'Hosting & maintenance',
+    hostingOnlyLead:
+      'Sites we did not design but do host and maintain — with CDN, SSL, backups and uptime monitoring.',
     beyondWeb: 'Beyond websites',
     reach: {
       microsoft365: 'Businesses on Microsoft 365',

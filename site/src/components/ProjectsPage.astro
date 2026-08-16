@@ -15,8 +15,11 @@ const t = getDict(lang);
  * rendering 160+ identical placeholder tiles.
  */
 const WEB = 'Web Design';
+/** Sites we host and maintain but did not design. */
+const HOSTING_ONLY = 'Hosting Only';
 
 const webProjects = projects.filter((project) => project.tabs.includes(WEB));
+const hostedProjects = projects.filter((project) => project.tabs.includes(HOSTING_ONLY));
 
 /*
  * Counts of live client engagements, taken from billing rather than from the
@@ -62,6 +65,26 @@ const INITIAL = 24;
         </button>
       </p>
 
+      {hostedProjects.length > 0 && (
+        <section class="hosted" aria-labelledby="hosted-title">
+          <h2 class="hosted__title" id="hosted-title">{t.projects.hostingOnly}</h2>
+          <p class="section-lead">{t.projects.hostingOnlyLead}</p>
+          <div class="projects-grid">
+            {hostedProjects.map((project) => (
+              <div class="projects-grid__item">
+                <ProjectCard
+                  title={project.title}
+                  url={project.url}
+                  tags={project.tags.slice(0, 2)}
+                  thumb={project.thumb}
+                  visitLabel={t.projects.visit}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section class="services-summary" aria-labelledby="services-summary-title">
         <h2 class="services-summary__title" id="services-summary-title">
           {t.projects.beyondWeb}
@@ -88,6 +111,14 @@ const INITIAL = 24;
   }
   .projects-grid__item { min-width: 0; }
   .projects-grid__item[hidden] { display: none; }
+
+  .hosted {
+    margin-top: clamp(3rem, 7vw, 5rem);
+    padding-top: clamp(2rem, 5vw, 3rem);
+    border-top: 1px solid hsl(var(--border));
+  }
+  .hosted__title { font-size: clamp(1.3rem, 3vw, 1.75rem); }
+  .hosted .section-lead { margin-bottom: 2rem; }
 
   .services-summary {
     margin-top: clamp(3rem, 7vw, 5rem);

@@ -53,6 +53,9 @@ const retab = Object.fromEntries(
 const reurl = Object.fromEntries(
   Object.entries(overrides.reurl ?? {}).filter(([key]) => !key.startsWith('_'))
 );
+const retitle = Object.fromEntries(
+  Object.entries(overrides.retitle ?? {}).filter(([key]) => !key.startsWith('_'))
+);
 
 const projects = [];
 const seen = new Set();
@@ -90,8 +93,12 @@ for (const entry of raw) {
   const thumb = typeof entry.thumbnail === 'string' ? entry.thumbnail : '';
   const hasThumb = thumb !== '' && existsSync(join(sourceDir, thumb));
 
+  // The export slugifies some names ("Aquadeluxe Gr"); retitle keys match the
+  // cleaned title, so the rename happens after cleanTitle.
+  const cleaned = cleanTitle(title);
+
   projects.push({
-    title: cleanTitle(title),
+    title: retitle[cleaned] ?? cleaned,
     // Prefer the bare production URL over an environment subdomain.
     url: url || null,
     tags: entry.tags ?? [],
