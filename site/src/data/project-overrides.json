@@ -1,0 +1,55 @@
+{
+  "_comment": "Manual corrections applied on top of the portfolio.buy-it.gr import. Edit this file, not projects.json — scripts/import-projects.mjs reapplies it on every re-import.",
+
+  "excludeUrls": {
+    "_comment": "Substring match on a project's URL. Staging mirrors, .pages.dev preview hosts, internal tooling and sub-projects that are not separate work.",
+    "values": [
+      "app.greektv.page",
+      "cameobr-com.pages.dev",
+      "electronicgr-com.pages.dev",
+      "streaming.ielko.com",
+      "portfolio.buy-it.gr",
+      "tatatext-com.pages.dev",
+      "water.polites-zante.com",
+      "skopos.polites-zante.com",
+      "boothflix-gr.pages.dev"
+    ]
+  },
+
+  "excludeTitles": {
+    "_comment": "Exact title match, for entries that carry no URL.",
+    "values": ["App Greektv Page", "Greektv Page", "Boothflix Gr"]
+  },
+
+  "reurl": {
+    "_comment": "Point a project at its production domain instead of the .pages.dev host recorded in the export. Keyed by exact title.",
+    "Πολίτες Ζακύνθου": "https://polites-zante.com"
+  },
+
+  "retab": {
+    "_comment": "Replace a project's service categories. Keyed by exact title.",
+    "KARRAS HOTELS": ["Cloud Infrastructure"],
+    "DIANA HOTELS": ["Networking", "Web Services", "Web Hosting", "Cybersecurity", "VoIP"],
+    "FILOXENIA HOTEL": ["Cybersecurity", "VoIP"]
+  },
+
+  "add": {
+    "_comment": "Work that is not in the portfolio export.",
+    "values": [
+      {
+        "title": "Διαύγεια Πολιτών Ζακύνθου",
+        "url": "https://diavgeia.polites-zante.com",
+        "tags": ["Cloudflare Pages", "Static"],
+        "tabs": ["Web Design"],
+        "thumb": null
+      },
+      {
+        "title": "ATLANTIS HOTEL",
+        "url": null,
+        "tags": ["3CX PBX"],
+        "tabs": ["VoIP"],
+        "thumb": null
+      }
+    ]
+  }
+}

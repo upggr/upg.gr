@@ -292,8 +292,12 @@ export default {
     eyebrow: 'Projects',
     title: 'Infrastructure we run every day',
     lead:
-      'A sample of the projects and infrastructure we design, host and support — including work shared with our sister company Buy IT.',
+      'Websites we designed, host and support — including work shared with our sister company Buy IT.',
     all: 'All',
+    beyondWeb: 'Beyond websites',
+    otherServices: 'Other services',
+    beyondWebLead:
+      'Websites are only part of it. We also run the infrastructure, security and cloud services behind dozens of businesses.',
     visit: 'Visit',
     showMore: 'More projects',
     countLabel: 'projects',

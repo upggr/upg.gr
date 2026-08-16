@@ -72,18 +72,6 @@
   "thumb": "/projects/anna-s-kitchen-restaurant-tsilivi-zakynthos.webp"
  },
  {
-  "title": "App Greektv Page",
-  "url": "https://app.greektv.page",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/app-greektv-page.webp"
- },
- {
   "title": "Aqua Bay Hotel · Tsilivi Zakynthos Greece",
   "url": "https://aquabayhotel.gr",
   "tags": [
@@ -156,18 +144,6 @@
   "thumb": "/projects/buy-it-ticketing.webp"
  },
  {
-  "title": "Cameobr Com",
-  "url": "https://cameobr-com.pages.dev",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/cameobr-com.webp"
- },
- {
   "title": "Captains Hotel in Argassi, Zakynthos, Greece",
   "url": "https://captainshotel.gr",
   "tags": [
@@ -214,18 +190,6 @@
    "Web Design"
   ],
   "thumb": "/projects/cronulla-hotel-in-kalamaki-zakynthos-greece.webp"
- },
- {
-  "title": "Electronicgr Com",
-  "url": "https://electronicgr-com.pages.dev",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/electronicgr-com.webp"
  },
  {
   "title": "Fidelity Travel Agency",
@@ -336,18 +300,6 @@
   "thumb": "/projects/liaskos-museums-com.webp"
  },
  {
-  "title": "My Streams",
-  "url": "https://streaming.ielko.com",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/my-streams.webp"
- },
- {
   "title": "New Beach Hotel, Tsilivi Zakynthos Greece",
   "url": "https://newbeachhotel.gr",
   "tags": [
@@ -420,18 +372,6 @@
   "thumb": "/projects/planos-deluxe-hotel-tsilivi-zakynthos-greece.webp"
  },
  {
-  "title": "Portfolio",
-  "url": "https://portfolio.buy-it.gr",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/portfolio-buy-it-gr.webp"
- },
- {
   "title": "PRISMA Flowchart Generator",
   "url": "https://prisma-generator.upg.gr",
   "tags": [
@@ -466,18 +406,6 @@
    "Web Design"
   ],
   "thumb": "/projects/sky-birds-villa-holistic-escape.webp"
- },
- {
-  "title": "Tatatext Com",
-  "url": "https://tatatext-com.pages.dev",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/tatatext-com.webp"
  },
  {
   "title": "Traventure in Greece",
@@ -612,18 +540,6 @@
   "thumb": null
  },
  {
-  "title": "ΠΑΡΑΤΗΡΗΤΗΡΙΟ ΠΟΙΟΤΗΤΑΣ ΝΕΡΟΥ",
-  "url": "https://water.polites-zante.com",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": null
- },
- {
   "title": "Πολίτες Ζακύνθου",
   "url": "https://polites-zante.pages.dev",
   "tags": [
@@ -636,20 +552,8 @@
   "thumb": null
  },
  {
-  "title": "ΧΥΤΑ ΣΚΟΠΟΥ ΖΑΚΥΝΘΟΣ - Παρακολούθηση Προστίμων και Απραξίας",
-  "url": "https://skopos.polites-zante.com",
-  "tags": [
-   "Cloudflare Pages",
-   "Static"
-  ],
-  "tabs": [
-   "Web Design"
-  ],
-  "thumb": "/projects/skopos.webp"
- },
- {
-  "title": "Boothflix Gr",
-  "url": "https://boothflix-gr.pages.dev",
+  "title": "Gaiahouse Gr",
+  "url": "https://gaiahouse.gr",
   "tags": [
    "Cloudflare Pages",
    "Static"
@@ -660,8 +564,8 @@
   "thumb": null
  },
  {
-  "title": "Gaiahouse Gr",
-  "url": "https://gaiahouse.gr",
+  "title": "Διαύγεια Πολιτών Ζακύνθου",
+  "url": "https://diavgeia.polites-zante.com",
   "tags": [
    "Cloudflare Pages",
    "Static"
@@ -884,6 +788,17 @@
   ],
   "tabs": [
    "DNS Management"
+  ],
+  "thumb": null
+ },
+ {
+  "title": "ATLANTIS HOTEL",
+  "url": null,
+  "tags": [
+   "3CX PBX"
+  ],
+  "tabs": [
+   "VoIP"
   ],
   "thumb": null
  },
@@ -1211,7 +1126,8 @@
    "Networking",
    "Web Services",
    "Web Hosting",
-   "Cybersecurity"
+   "Cybersecurity",
+   "VoIP"
   ],
   "thumb": null
  },
@@ -1378,7 +1294,8 @@
    "Endpoint Protection"
   ],
   "tabs": [
-   "Cybersecurity"
+   "Cybersecurity",
+   "VoIP"
   ],
   "thumb": null
  },
@@ -1476,18 +1393,6 @@
   ],
   "tabs": [
    "DNS Management"
-  ],
-  "thumb": null
- },
- {
-  "title": "Greektv Page",
-  "url": null,
-  "tags": [
-   "Cloudflare Workers",
-   "Serverless"
-  ],
-  "tabs": [
-   "Web Design"
   ],
   "thumb": null
  },
@@ -1714,7 +1619,7 @@
    "Cloud PBX"
   ],
   "tabs": [
-   "VoIP"
+   "Cloud Infrastructure"
   ],
   "thumb": null
  },

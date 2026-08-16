@@ -39,6 +39,20 @@ function cleanTitle(title) {
 
 const raw = JSON.parse(await readFile(join(sourceDir, 'portfolio-data.json'), 'utf8'));
 
+// Manual corrections layered on top of the export, so a re-import never
+// resurrects entries we deliberately removed or re-categorised.
+const overrides = JSON.parse(
+  await readFile(join(siteRoot, 'src/data/project-overrides.json'), 'utf8')
+);
+const excludeUrls = overrides.excludeUrls?.values ?? [];
+const excludeTitles = new Set(overrides.excludeTitles?.values ?? []);
+const retab = Object.fromEntries(
+  Object.entries(overrides.retab ?? {}).filter(([key]) => !key.startsWith('_'))
+);
+const reurl = Object.fromEntries(
+  Object.entries(overrides.reurl ?? {}).filter(([key]) => !key.startsWith('_'))
+);
+
 const projects = [];
 const seen = new Set();
 
@@ -46,10 +60,15 @@ for (const entry of raw) {
   if (!entry.active) continue;
 
   const title = (entry.title ?? '').trim();
-  const tabs = (entry.tabs ?? []).filter(Boolean);
+  let tabs = (entry.tabs ?? []).filter(Boolean);
   if (!title || tabs.length === 0) continue;
 
-  const url = (entry.url ?? '').trim();
+  let url = (entry.url ?? '').trim();
+
+  if (excludeTitles.has(title)) continue;
+  if (url && excludeUrls.some((fragment) => url.includes(fragment))) continue;
+  if (retab[title]) tabs = retab[title];
+  if (reurl[title]) url = reurl[title];
 
   /*
    * Dedupe key. Linked entries collapse on their canonical host *and*
@@ -75,6 +94,16 @@ for (const entry of raw) {
     thumb: hasThumb ? thumb : null,
     _srcThumb: hasThumb ? join(sourceDir, thumb) : null,
   });
+}
+
+// Work that is not in the portfolio export at all.
+for (const extra of overrides.add?.values ?? []) {
+  const key = extra.url
+    ? `${rootHost(extra.url)}::${extra.tabs[0]}`
+    : `${extra.title.toLowerCase()}::${extra.tabs[0]}`;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  projects.push({ ...extra, _srcThumb: null });
 }
 
 // Featured first: has a screenshot, then has a link, then alphabetical.
